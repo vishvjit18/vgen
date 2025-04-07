@@ -1,0 +1,23 @@
+[project]
+name = "vgen"
+version = "0.1.0"
+description = "VGen using crewAI"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "crewai[tools]>=0.105.0,<1.0.0"
+]
+
+[project.scripts]
+vgen = "vgen.main:run"
+run_crew = "vgen.main:run"
+train = "vgen.main:train"
+replay = "vgen.main:replay"
+test = "vgen.main:test"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "crew"
