@@ -1,61 +1,111 @@
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
+from pathlib import Path
+import yaml
+import json
 
 @CrewBase
 class Vgen():
-	"""Vgen crew"""
+    """Vgen crew with dynamic Verilog tasks"""
 
-	# Learn more about YAML configuration files here:
-	# Agents: https://docs.crewai.com/concepts/agents#yaml-configuration-recommended
-	# Tasks: https://docs.crewai.com/concepts/tasks#yaml-configuration-recommended
-	agents_config = 'config/agents.yaml'
-	tasks_config = 'config/tasks.yaml'
+    agents_config = 'config/agents.yaml'
+    tasks_config = 'config/tasks.yaml'
 
-	# If you would like to add tools to your agents, you can learn more about it here:
-	# https://docs.crewai.com/concepts/agents#agent-tools
-	@agent
-	def planner(self) -> Agent:
-		return Agent(
-			config=self.agents_config['planner'],
-			# llm=LLM(model="ollama/llama3.2:3b"),
-			verbose=True,
-			human_input=False,
-		)
+    @agent
+    def planner(self) -> Agent:
+        return Agent(
+            config=self.agents_config['planner'],
+            verbose=True,
+            human_input=False,
+        )
 
-	# To learn more about structured task outputs, 
-	# task dependencies, and task callbacks, check out the documentation:
-	# https://docs.crewai.com/concepts/tasks#overview-of-a-task
-	@task
-	def high_level_planning_task(self) -> Task:
-		return Task(
-			config=self.tasks_config['high_level_planning_task'],
-			output_file='high_level_planning_task.md',
-		)
+    @agent
+    def verilog_agent(self) -> Agent:
+        return Agent(
+            config=self.agents_config['verilog_agent'],
+            verbose=True,
+            human_input=False,
+        )
 
-	# @task
-	# def reporting_task(self) -> Task:
-	# 	return Task(
-	# 		config=self.tasks_config['reporting_task'],
-	# 		output_file='report.md'
-	# 	)
+    @task
+    def high_level_planning_task(self) -> Task:
+        return Task(
+            config=self.tasks_config['high_level_planning_task'],
+            output_file='high_level_planning_task.md',
+        )
 
-	@crew
-	def crew(self) -> Crew:
-		"""Creates the Vgen crew"""
-		# To learn how to add knowledge sources to your crew, check out the documentation:
-		# https://docs.crewai.com/concepts/knowledge#what-is-knowledge
+    def _load_subtasks(self):
+        with open("verilog_task.json") as f:
+            data = json.load(f)
+        return data["Sub-Task"]
 
-		return Crew(
-			agents=self.agents, # Automatically created by the @agent decorator
-			tasks=self.tasks, # Automatically created by the @task decorator
-			process=Process.sequential,
-			verbose=True,
-			memory=True,
-			embedder={
-						"provider": "ollama",
-						"config": {
-							"model": "all-minilm"
-						}
-					}
-			# process=Process.hierarchical, # In case you wanna use that instead https://docs.crewai.com/how-to/Hierarchical/
-		)
+    def _load_task_template(self):
+        # Correct path construction
+        config_dir = Path(__file__).parent / "config"
+        tasks_path = config_dir / "tasks.yaml"  # Explicit path to YAML file
+
+        with open(tasks_path) as f:
+            return yaml.safe_load(f)['verilog_conversion']  # Access 'verilog_conversion' directly
+
+    # Updated method to clean and save results
+    def _save_results(self, results):
+        # Clean and combine all Verilog snippets
+        cleaned_verilog = []
+        
+        for result in results:
+            # Remove markdown code blocks and whitespace
+            cleaned = result.replace('```verilog', '').replace('```', '').strip()
+            cleaned_verilog.append(cleaned)
+        
+        # Combine all snippets with proper formatting
+        final_code = "\n\n".join(cleaned_verilog)
+        
+        # Write to a single file
+        with open("four_bit_adder.v", "w") as f:
+            f.write(final_code)
+
+    # Modified task creation (remove individual output files)
+    def verilog_subtasks(self) -> list[Task]:
+        subtasks = self._load_subtasks()
+        task_template = self._load_task_template()
+        agent = self.verilog_agent()
+
+        return [
+            Task(
+                description=task_template['description'].format(content=sub['content']),
+                expected_output=task_template['expected_output'],
+                agent=agent,
+                # Removed output_file parameter
+            )
+            for sub in subtasks
+        ]
+
+    @crew
+    def crew1(self) -> Crew:
+        """High-level planner only"""
+        return Crew(
+            agents=self.agents,
+            tasks=self.tasks,
+            process=Process.sequential,
+            verbose=True,
+            memory=True,
+            embedder={
+                "provider": "ollama",
+                "config": {"model": "all-minilm"}
+            }
+        )
+
+    @crew
+    def verilog_crew(self) -> Crew:
+        """Dynamically runs Verilog conversion subtasks"""
+        return Crew(
+            agents=[self.verilog_agent()],
+            tasks=self.verilog_subtasks(),
+            process=Process.sequential,
+            verbose=True,
+            memory=True,
+            embedder={
+                "provider": "ollama",
+                "config": {"model": "all-minilm"}
+            }
+        )

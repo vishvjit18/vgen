@@ -18,3 +18,27 @@ high_level_planning_task:
    - content: task discription.
    - source: The source code or context related to the task.
   agent: planner
+
+verilog_conversion:
+  description: >
+   Convert this natural language subtask into Verilog code.
+    
+   Subtask description:
+   {content}
+    
+   Only return the Verilog code for this step.
+  expected_output: >
+   A single snippet of Verilog code.
+  agent: verilog_agent
+
+# verilog_task:
+#   description: >
+#     Convert this natural language subtask into Verilog code.
+
+#     Subtask description:
+#     {content}
+
+#     Only return the Verilog code for this step.
+#   expected_output: >
+#     "A single snippet of Verilog code."
+#   agent: verilog_agent
