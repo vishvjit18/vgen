@@ -86,12 +86,12 @@ class Vgen():
         final_code = "\n\n".join(results)
         
         # Write raw output to a temporary file
-        temp_file = "four_bit_adder_raw.v"
+        temp_file = "design_raw.sv"
         with open(temp_file, "w") as f:
             f.write(final_code)
         
         # Use the clean_verilog_file function to clean the output
-        output_file = "four_bit_adder.v"
+        output_file = "design.sv"
         clean_verilog_file(temp_file, output_file)
 
     # Modified task creation (remove individual output files)
@@ -105,7 +105,6 @@ class Vgen():
                 description=task_template['description'].format(content=sub['content']),
                 expected_output=task_template['expected_output'],
                 agent=agent,
-                # Removed output_file parameter
             )
             for sub in subtasks
         ]
@@ -117,8 +116,9 @@ class Vgen():
             name="verilog_merging",  # Add name parameter
             config=self.tasks_config['verilog_merging'],
             agent=self.merger_agent(),
-            output_file='four_bit_adder.v'
+            output_file='design.sv'
         )
+    
         
     @crew
     def verilog_crew(self) -> Crew:
@@ -135,3 +135,78 @@ class Vgen():
             },
             output_log_file=os.path.join(".crew", "logs", "verilog_pipeline.json"),
         )
+
+    @crew
+    def testbench_crew(self) -> Crew:
+        """Testbench generation crew"""
+        return Crew(
+            agents=[self.testbench_agent()],
+            tasks=[self.testbench_task()],
+            process=Process.sequential,
+            verbose=True,
+            memory=True,
+            embedder={
+                "provider": "ollama",
+                "config": {"model": "all-minilm"}
+            },
+            output_log_file=os.path.join(".crew", "logs", "testbench.json"),
+        )
+
+    @agent
+    def testbench_agent(self) -> Agent:
+        return Agent(
+            config=self.agents_config['testbench_agent'],
+            verbose=True,
+            human_input=False,
+        )
+
+    @task
+    def testbench_task(self) -> Task:
+        # Load the first subtask from verilog_task.json
+        try:
+            with open("verilog_task.json") as f:
+                data = json.load(f)
+                first_subtask = data["Sub-Task"][0]["source"] if data["Sub-Task"] else ""
+        except Exception as e:
+            print(f"Error loading verilog_task.json: {e}")
+            first_subtask = ""
+
+        # Get the Target_Problem from the same hardcoded value as in main.py
+        target_problem = """Please act as a professional verilog designer.
+
+Implement a module of an 8-bit adder with multiple bit-level adders in combinational logic. 
+
+Module name:  
+    adder_8bit               
+Input ports:
+    a[7:0]: 8-bit input operand A.
+    b[7:0]: 8-bit input operand B.
+    cin: Carry-in input.
+Output ports:
+    sum[7:0]: 8-bit output representing the sum of A and B.
+    cout: Carry-out output.
+
+Implementation:
+The module utilizes a series of bit-level adders (full adders) to perform the addition operation.
+
+Give me the complete code."""
+ 
+        # Get the testbench task configuration
+        task_config = self.tasks_config['testbench_generation'].copy()
+        
+        # Create a Task with necessary configuration
+        task = Task(
+            name="testbench_generation",
+            config=task_config,
+            agent=self.testbench_agent(),
+            output_file="testbench.sv",
+            context=[]  # Empty list as context should be a list
+        )
+        
+        # Interpolate the inputs into the task
+        task.interpolate_inputs_and_add_conversation_history({
+            "first_subtask": first_subtask,
+            "Target_Problem": target_problem
+        })
+        
+        return task

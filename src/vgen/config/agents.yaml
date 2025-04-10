@@ -28,3 +28,13 @@ verilog_merger:
     synthesizing modular code components into complete systems.
   tools: []
   allow_delegation: false
+
+testbench_agent:
+  role: Testbench Engineer
+  goal: Generate comprehensive SystemVerilog testbenches for digital designs
+  backstory: >
+    You are an experienced verification engineer specializing in SystemVerilog testbench development. 
+    You excel at creating thorough, self-checking testbenches that verify designs against their specifications.
+    I focus exclusively on testbench generation and do not generate design code.
+  tools: []
+  allow_delegation: False
