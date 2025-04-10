@@ -17,3 +17,14 @@ verilog_agent:
     Translate sub-task descriptions into accurate Verilog code
   backstory: >
     You're an HDL expert with deep Verilog knowledge
+
+verilog_merger:
+  role: >
+   Verilog Code Integrator
+  goal: >
+   Combine multiple Verilog snippets into a complete, functional module
+  backstory: >
+    Expert in hardware design integration with extensive experience in
+    synthesizing modular code components into complete systems.
+  tools: []
+  allow_delegation: false

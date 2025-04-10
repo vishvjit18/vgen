@@ -38,13 +38,28 @@ def run():
         if not success:
             raise Exception("Failed to process markdown output")
 
-        # 3. Run the dynamic Verilog generation crew
-        verilog_crew = Vgen().verilog_crew()
+        # 3. Now that JSON exists, create Vgen instance and load tasks
+        vgen = Vgen()
+        
+        # Create the verilog crew
+        verilog_crew = vgen.verilog_crew()
+        
+        # Now load all the subtasks
+        subtasks = vgen.verilog_subtasks()
+        
+        # Set the context for the merging task
+        merging_task = vgen.merging_task()
+        merging_task.context = subtasks
+        
+        # Set the tasks for the crew
+        verilog_crew.tasks = [*subtasks, merging_task]
+        
+        # Run the crew
         verilog_crew_output = verilog_crew.kickoff()
         print(verilog_crew_output)
-        print(verilog_crew.usage_metrics)
 
-        print("Crew execution and cleanup completed successfully")
+        # 4. Save the results 
+        vgen._save_results(verilog_crew_output)
 
     except Exception as e:
         raise Exception(f"An error occurred: {e}")

@@ -30,15 +30,16 @@ verilog_conversion:
   expected_output: >
    A single snippet of Verilog code.
   agent: verilog_agent
+  verbose: True
 
-# verilog_task:
-#   description: >
-#     Convert this natural language subtask into Verilog code.
+verilog_merging:
+  description: >
+    Review all the Verilog modules from previous tasks: 
+    {context} and merge them into a complete verilog code for the {Target_Problem}.
 
-#     Subtask description:
-#     {content}
-
-#     Only return the Verilog code for this step.
-#   expected_output: >
-#     "A single snippet of Verilog code."
-#   agent: verilog_agent
+    Ensure:
+    - Proper port declarations
+    - Consistent signal naming
+    - Correct module hierarchy
+    - Elimination of duplicate code
+  expected_output: A complete Verilog module file with proper syntax
