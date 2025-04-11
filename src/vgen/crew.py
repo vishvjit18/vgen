@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 import os
 import json
-from vgen.config import clean_verilog_file  # Add this import at the top
+from vgen.config import clean_verilog_file, Target_Problem  # Add this import at the top
 
 @CrewBase
 class Vgen():
@@ -45,13 +45,7 @@ class Vgen():
             human_input=False,
         )
     
-    @agent
-    def merger_agent(self) -> Agent:
-        return Agent(
-            config=self.agents_config['verilog_merger'],
-            verbose=True,
-            human_input=False,
-        )
+    
 
     @task
     def high_level_planning_task(self) -> Task:
@@ -133,47 +127,7 @@ class Vgen():
         
         return "\n\n".join(all_code)
 
-    @task
-    def merging_task(self) -> Task:
-        # Get the Target_Problem from the same hardcoded value as in main.py
-        target_problem = """Please act as a professional verilog designer.
-
-Implement a module of an 8-bit adder with multiple bit-level adders in combinational logic. 
-
-Module name:  
-    adder_8bit               
-Input ports:
-    a[7:0]: 8-bit input operand A.
-    b[7:0]: 8-bit input operand B.
-    cin: Carry-in input.
-Output ports:
-    sum[7:0]: 8-bit output representing the sum of A and B.
-    cout: Carry-out output.
-
-Implementation:
-The module utilizes a series of bit-level adders (full adders) to perform the addition operation.
-
-Give me the complete code."""
-
-        # Collect all subtask outputs
-        subtask_code = self.collect_subtask_outputs()
-        
-        # Create a Task with necessary configuration
-        task = Task(
-            name="verilog_merging",
-            config=self.tasks_config['verilog_merging'].copy(),
-            agent=self.merger_agent(),
-            output_file='design.sv',
-            context=[]  # Empty list since we'll pass code directly via interpolation
-        )
-        
-        # Interpolate the Target_Problem and subtask code into the task
-        task.interpolate_inputs_and_add_conversation_history({
-            "Target_Problem": target_problem,
-            "context": subtask_code  # Pass collected code as context
-        })
-        
-        return task
+    
         
     @crew
     def subtask_crew(self) -> Crew:
@@ -191,21 +145,7 @@ Give me the complete code."""
             output_log_file=os.path.join(".crew", "logs", "subtasks.json"),
         )
         
-    @crew
-    def merging_crew(self) -> Crew:
-        """Dedicated crew for just the merging task"""
-        return Crew(
-            agents=[self.merger_agent()],
-            tasks=[self.merging_task()],
-            process=Process.sequential,
-            verbose=True,
-            memory=True,
-            embedder={
-                "provider": "ollama",
-                "config": {"model": "all-minilm"}
-            },
-            output_log_file=os.path.join(".crew", "logs", "merging.json"),
-        )
+    
 
     @crew
     def verilog_crew(self) -> Crew:
@@ -259,24 +199,7 @@ Give me the complete code."""
             first_subtask = ""
 
         # Get the Target_Problem from the same hardcoded value as in main.py
-        target_problem = """Please act as a professional verilog designer.
-
-Implement a module of an 8-bit adder with multiple bit-level adders in combinational logic. 
-
-Module name:  
-    adder_8bit               
-Input ports:
-    a[7:0]: 8-bit input operand A.
-    b[7:0]: 8-bit input operand B.
-    cin: Carry-in input.
-Output ports:
-    sum[7:0]: 8-bit output representing the sum of A and B.
-    cout: Carry-out output.
-
-Implementation:
-The module utilizes a series of bit-level adders (full adders) to perform the addition operation.
-
-Give me the complete code."""
+        target_problem = Target_Problem
  
         # Get the testbench task configuration
         task_config = self.tasks_config['testbench_generation'].copy()
@@ -297,3 +220,52 @@ Give me the complete code."""
         })
         
         return task
+
+    @agent
+    def merger_agent(self) -> Agent:
+        return Agent(
+            config=self.agents_config['verilog_merger'],
+            verbose=True,
+            human_input=False,
+        )
+    
+    @task
+    def merging_task(self) -> Task:
+        # Get the Target_Problem from the same hardcoded value as in main.py
+        target_problem = Target_Problem
+
+        # Collect all subtask outputs
+        subtask_code = self.collect_subtask_outputs()
+        
+        # Create a Task with necessary configuration
+        task = Task(
+            name="verilog_merging",
+            config=self.tasks_config['verilog_merging'].copy(),
+            agent=self.merger_agent(),
+            output_file='design.sv',
+            context=[]  # Empty list since we'll pass code directly via interpolation
+        )
+        
+        # Interpolate the Target_Problem and subtask code into the task
+        task.interpolate_inputs_and_add_conversation_history({
+            "Target_Problem": target_problem,
+            "context": subtask_code  # Pass collected code as context
+        })
+        
+        return task
+    
+    @crew
+    def merging_crew(self) -> Crew:
+        """Dedicated crew for just the merging task"""
+        return Crew(
+            agents=[self.merger_agent()],
+            tasks=[self.merging_task()],
+            process=Process.sequential,
+            verbose=True,
+            memory=True,
+            embedder={
+                "provider": "ollama",
+                "config": {"model": "all-minilm"}
+            },
+            output_log_file=os.path.join(".crew", "logs", "merging.json"),
+        )
