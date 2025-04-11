@@ -35,7 +35,6 @@ class Vgen():
                 "config": {"model": "all-minilm"}
             },
             output_log_file=os.path.join(".crew", "logs", "planner.json"),
-
         )
 
     @agent
@@ -76,14 +75,18 @@ class Vgen():
 
     # Updated method to clean and save results
     def _save_results(self, results):
-        # First, handle case where result might be a tuple
-        if results and isinstance(results, tuple):
-            results = [str(item) for item in results]
-        elif not isinstance(results, list):
-            results = [str(results)]
+        # Handle CrewOutput objects
+        processed_results = []
+        for result in results:
+            if hasattr(result, 'raw_output'):
+                # Extract raw_output from CrewOutput
+                processed_results.append(str(result.raw_output))
+            else:
+                # Handle other types (strings, tuples, etc.)
+                processed_results.append(str(result))
         
         # Combine all snippets with proper formatting
-        final_code = "\n\n".join(results)
+        final_code = "\n\n".join(processed_results)
         
         # Write raw output to a temporary file
         temp_file = "design_raw.sv"
@@ -93,8 +96,9 @@ class Vgen():
         # Use the clean_verilog_file function to clean the output
         output_file = "design.sv"
         clean_verilog_file(temp_file, output_file)
+        print(f"Saved cleaned Verilog code to {output_file}")
 
-    # Modified task creation (remove individual output files)
+    # Modified task creation to save individual output files
     def verilog_subtasks(self) -> list[Task]:
         subtasks = self._load_subtasks()
         task_template = self._load_task_template()
@@ -102,24 +106,107 @@ class Vgen():
 
         return [
             Task(
+                name=f"verilog_subtask_{i+1}",
                 description=task_template['description'].format(content=sub['content']),
                 expected_output=task_template['expected_output'],
                 agent=agent,
+                output_file=f"subtask_{i+1}.v"  # Save each subtask output to a file
             )
-            for sub in subtasks
+            for i, sub in enumerate(subtasks)
         ]
 
+    def collect_subtask_outputs(self) -> str:
+        """Collect all subtask outputs from files into a single string"""
+        subtasks = self._load_subtasks()
+        all_code = []
+        
+        # Collect all subtask output files
+        for i in range(len(subtasks)):
+            file_path = f"subtask_{i+1}.v"
+            try:
+                if os.path.exists(file_path):
+                    with open(file_path, "r") as f:
+                        code = f.read().strip()
+                        all_code.append(f"// Subtask {i+1} code\n{code}")
+            except Exception as e:
+                print(f"Error reading subtask file {file_path}: {e}")
+        
+        return "\n\n".join(all_code)
 
     @task
     def merging_task(self) -> Task:
-        return Task(
-            name="verilog_merging",  # Add name parameter
-            config=self.tasks_config['verilog_merging'],
-            agent=self.merger_agent(),
-            output_file='design.sv'
-        )
-    
+        # Get the Target_Problem from the same hardcoded value as in main.py
+        target_problem = """Please act as a professional verilog designer.
+
+Implement a module of an 8-bit adder with multiple bit-level adders in combinational logic. 
+
+Module name:  
+    adder_8bit               
+Input ports:
+    a[7:0]: 8-bit input operand A.
+    b[7:0]: 8-bit input operand B.
+    cin: Carry-in input.
+Output ports:
+    sum[7:0]: 8-bit output representing the sum of A and B.
+    cout: Carry-out output.
+
+Implementation:
+The module utilizes a series of bit-level adders (full adders) to perform the addition operation.
+
+Give me the complete code."""
+
+        # Collect all subtask outputs
+        subtask_code = self.collect_subtask_outputs()
         
+        # Create a Task with necessary configuration
+        task = Task(
+            name="verilog_merging",
+            config=self.tasks_config['verilog_merging'].copy(),
+            agent=self.merger_agent(),
+            output_file='design.sv',
+            context=[]  # Empty list since we'll pass code directly via interpolation
+        )
+        
+        # Interpolate the Target_Problem and subtask code into the task
+        task.interpolate_inputs_and_add_conversation_history({
+            "Target_Problem": target_problem,
+            "context": subtask_code  # Pass collected code as context
+        })
+        
+        return task
+        
+    @crew
+    def subtask_crew(self) -> Crew:
+        """Crew for executing verilog subtasks"""
+        return Crew(
+            agents=[self.verilog_agent()],
+            tasks=self.verilog_subtasks(),
+            process=Process.sequential,
+            verbose=True,
+            memory=True,
+            embedder={
+                "provider": "ollama",
+                "config": {"model": "all-minilm"}
+            },
+            output_log_file=os.path.join(".crew", "logs", "subtasks.json"),
+        )
+        
+    @crew
+    def merging_crew(self) -> Crew:
+        """Dedicated crew for just the merging task"""
+        return Crew(
+            agents=[self.merger_agent()],
+            tasks=[self.merging_task()],
+            process=Process.sequential,
+            verbose=True,
+            memory=True,
+            embedder={
+                "provider": "ollama",
+                "config": {"model": "all-minilm"}
+            },
+            output_log_file=os.path.join(".crew", "logs", "merging.json"),
+        )
+
     @crew
     def verilog_crew(self) -> Crew:
         """Complete Verilog generation pipeline"""

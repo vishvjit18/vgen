@@ -42,7 +42,6 @@ verilog_merging:
     - Correct module hierarchy
     - Elimination of duplicate code
   expected_output: A complete Verilog module file with proper syntax
-  context: [verilog_conversion]
 
 testbench_generation:
   description: >
