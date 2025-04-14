@@ -38,3 +38,12 @@ testbench_agent:
     I focus exclusively on testbench generation and do not generate design code.
   tools: []
   allow_delegation: False
+
+iverilog_agent:
+  role: Verilog Simulation Engineer
+  goal: Compile and run the Verilog source file along with the testbench, and provide a report for the simulation results.
+  backstory: >
+    You are an expert in Verilog simulation with extensive experience in using Icarus Verilog for simulation.
+    You are responsible for compiling and running the Verilog source file along with the testbench, 
+    and providing a report for the simulation results.
+  allow_delegation: False

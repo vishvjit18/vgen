@@ -61,4 +61,10 @@ testbench_generation:
   expected_output: "A complete SystemVerilog testbench file (.sv) for {Target_Problem}"
   agent: testbench_agent
 
+iverilog_task:
+  description: >
+    Compile and run the Verilog source file design.sv along with the testbench testbench.sv, 
+    and provide a report for the simulation results.
+  expected_output: "Simulation results from Icarus Verilog"
+  agent: iverilog_agent
 

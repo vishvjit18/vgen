@@ -65,6 +65,15 @@ def run():
         Vgen()._save_testbench_results([testbench_output])
         print("\n==== TESTBENCH GENERATION COMPLETE ====\n")
 
+        # 9. Run Icarus Verilog simulation
+        print("\n==== RUNNING ICARUS VERILOG SIMULATION ====\n")
+        icarus_crew = Vgen().icarus_crew()
+        simulation_output = icarus_crew.kickoff()
+        print(simulation_output)
+        # Save the simulation results
+        Vgen()._save_simulation_results([simulation_output])
+        print("\n==== SIMULATION COMPLETE ====\n")
+
         print("\n==== CLEANING UP SUBTASK FILES ====\n")
         subtask_files = glob.glob("subtask_*.v")
         for file in subtask_files:

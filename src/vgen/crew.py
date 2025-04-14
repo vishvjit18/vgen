@@ -5,6 +5,7 @@ import yaml
 import os
 import json
 from vgen.config import clean_verilog_file, Target_Problem  # Add this import at the top
+from vgen.tools.custom_tool import run_icarus_verilog
 
 @CrewBase
 class Vgen():
@@ -173,24 +174,6 @@ class Vgen():
             },
             output_log_file=os.path.join(".crew", "logs", "subtasks.json"),
         )
-        
-    
-
-    @crew
-    def verilog_crew(self) -> Crew:
-        """Complete Verilog generation pipeline"""
-        return Crew(
-            agents=[self.verilog_agent(), self.merger_agent()],
-            tasks=[*self.verilog_subtasks(), self.merging_task()],
-            process=Process.sequential,
-            verbose=True,  # Changed from 2 to True
-            memory=True,
-            embedder={
-                "provider": "ollama",
-                "config": {"model": "all-minilm"}
-            },
-            output_log_file=os.path.join(".crew", "logs", "verilog_pipeline.json"),
-        )
 
     @crew
     def testbench_crew(self) -> Crew:
@@ -298,3 +281,38 @@ class Vgen():
             },
             output_log_file=os.path.join(".crew", "logs", "merging.json"),
         )
+    
+    @task
+    def iverilog_task(self) -> Task:
+        return Task(
+            name="iverilog_task",
+            description="Compile and run the Verilog source file along with the testbench, and provide a report for the simulation results.",
+            expected_output="Simulation results from Icarus Verilog",
+            agent=self.iverilog_agent(),
+            output_file="iverilog_report.txt"
+        )
+    @agent
+    def iverilog_agent(self) -> Agent:
+        return Agent(
+            config=self.agents_config['iverilog_agent'],
+            tools=[run_icarus_verilog],
+            verbose=True
+        )
+        
+    @crew
+    def icarus_crew(self) -> Crew:
+        """Icarus simulation crew"""
+        return Crew(
+            agents=[self.iverilog_agent()],
+            tasks=[self.iverilog_task()],
+            process=Process.sequential,
+            verbose=True,
+            memory=True,
+            embedder={
+                "provider": "ollama",
+                "config": {"model": "all-minilm"}
+            },
+            output_log_file=os.path.join(".crew", "logs", "iverilog_simulation.json"),
+        )
+        
+        
