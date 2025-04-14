@@ -55,9 +55,13 @@ class Vgen():
         )
 
     def _load_subtasks(self):
-        with open("verilog_task.json") as f:
-            data = json.load(f)
-        return data["Sub-Task"]
+        try:
+            with open("verilog_task.json") as f:
+                data = json.load(f)
+            return data["Sub-Task"]
+        except FileNotFoundError:
+            print("Warning: verilog_task.json not found. This is expected during the planning phase.")
+            return []  # Return empty list if file doesn't exist
 
     def _load_task_template(self):
         # Correct path construction
@@ -91,6 +95,31 @@ class Vgen():
         output_file = "design.sv"
         clean_verilog_file(temp_file, output_file)
         print(f"Saved cleaned Verilog code to {output_file}")
+        
+    # Method to save testbench results
+    def _save_testbench_results(self, results):
+        # Handle CrewOutput objects
+        processed_results = []
+        for result in results:
+            if hasattr(result, 'raw_output'):
+                # Extract raw_output from CrewOutput
+                processed_results.append(str(result.raw_output))
+            else:
+                # Handle other types (strings, tuples, etc.)
+                processed_results.append(str(result))
+        
+        # Combine all snippets with proper formatting
+        final_code = "\n\n".join(processed_results)
+        
+        # Write raw output to a temporary file
+        temp_file = "testbench_raw.sv"
+        with open(temp_file, "w") as f:
+            f.write(final_code)
+        
+        # Use the clean_verilog_file function to clean the output
+        output_file = "testbench.sv"
+        clean_verilog_file(temp_file, output_file)
+        print(f"Saved cleaned testbench code to {output_file}")
 
     # Modified task creation to save individual output files
     def verilog_subtasks(self) -> list[Task]:

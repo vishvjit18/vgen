@@ -61,6 +61,8 @@ def run():
         testbench_crew = Vgen().testbench_crew()
         testbench_output = testbench_crew.kickoff()
         print(testbench_output)
+        # Save the testbench output using the new method
+        Vgen()._save_testbench_results([testbench_output])
         print("\n==== TESTBENCH GENERATION COMPLETE ====\n")
 
         print("\n==== CLEANING UP SUBTASK FILES ====\n")
