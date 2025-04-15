@@ -286,8 +286,7 @@ class Vgen():
     def iverilog_task(self) -> Task:
         return Task(
             name="iverilog_task",
-            description="Compile and run the Verilog source file along with the testbench, and provide a report for the simulation results.",
-            expected_output="Simulation results from Icarus Verilog",
+            config=self.tasks_config['iverilog_task'],
             agent=self.iverilog_agent(),
             output_file="iverilog_report.txt"
         )

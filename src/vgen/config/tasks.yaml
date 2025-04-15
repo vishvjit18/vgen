@@ -1,7 +1,7 @@
 high_level_planning_task:
   description: >
    Based on the {Target_Problem} think what you know about this, set up a sequential implementation plans. Each subtask should focus on implement only one signal at a time 
-   and don't create entire verilog code for the {Target_Problem}.
+   and don't create entire verilog code.
    Rules:
     Make sure the task plans satisfy the following rules! Do not make the plans that violate the following rules!!!
     Make a plan to define the module with its input and output first.
@@ -58,13 +58,13 @@ testbench_generation:
     5. Should compare each output against expected results stored in an array
     6. Use an error counter and a test case counter to report pass/fail status
     7. It should end the simulation with $finish
-  expected_output: "A complete SystemVerilog testbench file (.sv) for {Target_Problem}"
+  expected_output: A complete SystemVerilog testbench file (.sv) for {Target_Problem}
   agent: testbench_agent
 
 iverilog_task:
   description: >
     Compile and run the Verilog source file design.sv along with the testbench testbench.sv, 
-    and provide a report for the simulation results.
-  expected_output: "Simulation results from Icarus Verilog"
+    and provide a report for the simulation results without changing the design file or testbench file, only provide the suggestions to improve the design.
+  expected_output: suggestions for the design or testbench file based on simulation results if it fails.
   agent: iverilog_agent
 

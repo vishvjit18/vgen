@@ -71,7 +71,7 @@ def run():
         simulation_output = icarus_crew.kickoff()
         print(simulation_output)
         # Save the simulation results
-        Vgen()._save_simulation_results([simulation_output])
+        # Vgen()._save_simulation_results(simulation_output)
         print("\n==== SIMULATION COMPLETE ====\n")
 
         print("\n==== CLEANING UP SUBTASK FILES ====\n")
