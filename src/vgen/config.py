@@ -16,22 +16,5 @@ def clean_verilog_file(file_path, cleaned_file_path):
         print(f"Error cleaning {file_path}: {e}")
         exit(1)
 
-Target_Problem = """Please act as a professional verilog designer.
-
-Implement a module of an 8-bit adder with multiple bit-level adders in combinational logic. 
-
-Module name:  
-    adder_8bit               
-Input ports:
-    a[7:0]: 8-bit input operand A.
-    b[7:0]: 8-bit input operand B.
-    cin: Carry-in input.
-Output ports:
-    sum[7:0]: 8-bit output representing the sum of A and B.
-    cout: Carry-out output.
-
-Implementation:
-The module utilizes a series of bit-level adders (full adders) to perform the addition operation.
-
-Give me the complete code.
+Target_Problem = """write a module of a half adder.
  """

@@ -1,4 +1,4 @@
-from crewai import Agent, Crew, Process, Task
+from crewai import Agent, Crew, Process, Task, LLM
 from crewai.project import CrewBase, agent, crew, task
 from pathlib import Path
 import yaml
@@ -6,7 +6,22 @@ import os
 import json
 from vgen.config import clean_verilog_file, Target_Problem  # Add this import at the top
 from vgen.tools.custom_tool import run_icarus_verilog
+from langchain_openai import ChatOpenAI
 
+def get_gemini_pro_crew():
+    return LLM(
+        api_key=os.getenv("GEMINI_API_KEY"),
+        model="gemini/gemini-2.0-flash",
+    )
+
+llm = LLM(model="groq/llama3-70b-8192")
+
+def get_openrouter_llm(model="mistralai/mixtral-8x7b-instruct"):
+    return ChatOpenAI(
+        model=model,
+        openai_api_key=os.getenv("OPENROUTER_API_KEY"),
+        openai_api_base="https://openrouter.ai/api/v1",
+    )
 @CrewBase
 class Vgen():
     """Vgen crew with dynamic Verilog tasks"""
@@ -196,6 +211,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['testbench_agent'],
             verbose=True,
+            llm=get_openrouter_llm("arliai/qwq-32b-arliai-rpr-v1:free"),
             human_input=False,
         )
 
