@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 import os
 from dotenv import load_dotenv  # Add this import
-from vgen.utils.markdown_to_json import process_markdown_to_json
+from vgen.utils.markdown_to_json import process_markdown_to_json, process_iverilog_report_to_json
 from vgen.crew import Vgen
 from vgen.config import Target_Problem
 import glob
@@ -56,23 +56,57 @@ def run():
         # 6. Save the merged result
         Vgen()._save_results([merging_output])
         
-        # 8. Generate testbench
-        print("\n==== GENERATING TESTBENCH ====\n")
-        testbench_crew = Vgen().testbench_crew()
-        testbench_output = testbench_crew.kickoff()
-        print(testbench_output)
-        # Save the testbench output using the new method
-        Vgen()._save_testbench_results([testbench_output])
-        print("\n==== TESTBENCH GENERATION COMPLETE ====\n")
+        # # 8. Generate testbench
+        # print("\n==== GENERATING TESTBENCH ====\n")
+        # testbench_crew = Vgen().testbench_crew()
+        # testbench_output = testbench_crew.kickoff()
+        # print(testbench_output)
+        # # Save the testbench output using the new method
+        # Vgen()._save_testbench_results([testbench_output])
+        # print("\n==== TESTBENCH GENERATION COMPLETE ====\n")
 
         # 9. Run Icarus Verilog simulation
         print("\n==== RUNNING ICARUS VERILOG SIMULATION ====\n")
         icarus_crew = Vgen().icarus_crew()
         simulation_output = icarus_crew.kickoff()
         print(simulation_output)
-        # Save the simulation results
-        # Vgen()._save_simulation_results(simulation_output)
         print("\n==== SIMULATION COMPLETE ====\n")
+        
+        input_md = 'iverilog_report.md'
+        output_json = 'iverilog_report.json'
+
+        #10.0
+        print("\n==== PROCESSING MARKDOWN TO JSON ====\n")
+        success = process_iverilog_report_to_json(input_md, output_json)
+        if not success:
+            raise Exception("Failed to process markdown output")
+        
+        # 10.1 Run the testbench fixer crew
+        # print("\n==== RUNNING TESTBENCH FIXER CREW ====\n")
+        # testbench_fixer_crew = Vgen().testbench_fixer_crew()
+        # testbench_fixer_output = testbench_fixer_crew.kickoff()
+        # print(testbench_fixer_output)
+        
+        # Save the fixed testbench using the clean_verilog_file function
+        # Vgen()._save_fixed_testbench_results([testbench_fixer_output])
+        # print("\n==== FIXED TESTBENCH SAVED ====\n")
+
+        # 11. Run the testbench again
+        # print("\n==== RUNNING ICARUS VERILOG SIMULATION ====\n")
+        # Rerun_crew = Vgen().Rerun_crew()
+        # Rerun_output = Rerun_crew.kickoff()
+        # print(Rerun_output)
+        # print("\n==== SIMULATION COMPLETE ====\n")
+
+        # #Run the design fixer crew
+        # print("\n==== RUNNING DESIGN FIXER CREW ====\n")
+        # design_fixer_crew = Vgen().design_fixer_crew()
+        # design_fixer_output = design_fixer_crew.kickoff()
+        # print(design_fixer_output)
+        
+        # # Save the fixed testbench using the clean_verilog_file function
+        # Vgen()._save_fixed_testbench_results([design_fixer_output])
+        # print("\n==== FIXED DESIGN SAVED ====\n")
 
         print("\n==== CLEANING UP SUBTASK FILES ====\n")
         subtask_files = glob.glob("subtask_*.v")
