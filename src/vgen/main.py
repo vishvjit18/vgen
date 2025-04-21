@@ -98,15 +98,15 @@ def run():
         # print(Rerun_output)
         # print("\n==== SIMULATION COMPLETE ====\n")
 
-        # #Run the design fixer crew
-        # print("\n==== RUNNING DESIGN FIXER CREW ====\n")
-        # design_fixer_crew = Vgen().design_fixer_crew()
-        # design_fixer_output = design_fixer_crew.kickoff()
-        # print(design_fixer_output)
+        #Run the design fixer crew
+        print("\n==== RUNNING DESIGN FIXER CREW ====\n")
+        Rerun_crew = Vgen().Rerun_crew()
+        design_fixer_output = Rerun_crew.kickoff()
+        print(design_fixer_output)
         
-        # # Save the fixed testbench using the clean_verilog_file function
-        # Vgen()._save_fixed_testbench_results([design_fixer_output])
-        # print("\n==== FIXED DESIGN SAVED ====\n")
+        # Save the fixed testbench using the clean_verilog_file function
+        Vgen()._save_fixed_testbench_results([design_fixer_output])
+        print("\n==== FIXED DESIGN SAVED ====\n")
 
         print("\n==== CLEANING UP SUBTASK FILES ====\n")
         subtask_files = glob.glob("subtask_*.v")
@@ -123,9 +123,6 @@ def train():
     """
     Train the crew for a given number of iterations.
     """
-    inputs = {
-        "Target_Problem": "write a verilog code for a 4-bit adder"
-    }
     try:
         Vgen().crew().train(n_iterations=int(sys.argv[1]), filename=sys.argv[2], inputs=inputs)
 

@@ -16,28 +16,25 @@ def clean_verilog_file(file_path, cleaned_file_path):
         print(f"Error cleaning {file_path}: {e}")
         exit(1)
 
-Target_Problem = """Please act as a professional Verilog designer.
+Target_Problem = """Please act as a professional verilog designer.
 
-Implement a module of a 4-bit comparator with multiple bit-level comparators in combinational logic.
+Implement a 16-bit divider module, the dividend is 16-bit and the divider is 8-bit in combinational logic. Extract the higher bits of the dividend, matching the bit width of the divisor. Compare these bits with the divisor: if the dividend bits are greater, set the quotient to 1, otherwise set it to 0, and use the difference as the remainder. Concatenate the remainder with the highest remaining 1-bit of the dividend, and repeat the process until all dividend bits are processed.
 
-Module name:  
-    comparator_4bit               
+Module name:
+    div_16bit
+
 Input ports:
-    A [3:0]: First 4-bit input operand (binary number to compare).
-    B [3:0]: Second 4-bit input operand (binary number to compare).
+    A: 16-bit dividend.
+    B: 8-bit divisor.
+
 Output ports:
-    A_greater: 1-bit output indicating if A is greater than B.
-    A_equal: 1-bit output indicating if A is equal to B.
-    A_less: 1-bit output indicating if A is less than B.
+    result: 16-bit quotient.
+    odd: 16-bit remainder.
 
 Implementation:
-Comparison Logic: The module compares the two 4-bit binary numbers A and B using combinational logic.
-- A subtraction operation is performed: A - B. The result of this subtraction helps determine whether A is greater than, equal to, or less than B.
-- Carry Generation: If a borrow occurs during the subtraction, A is less than B (A_less).
-- If no borrow occurs and the result of subtraction is non-zero, A is greater than B (A_greater).
-- If A and B are equal, the result of subtraction is zero (A_equal).
-
-Output Encoding: The outputs (A_greater, A_equal, A_less) are mutually exclusive, ensuring only one of the three outputs is high (1) at any given time.
+The module uses two always blocks to perform the division operation.
+The first always block is a combinational block triggered by any change in the input values A and B. It updates the values of two registers, a_reg and b_reg, with the values of A and B, respectively.
+The second always block is also a combinational block triggered by any change in the input values A and B.
 
 Give me the complete code.
  """
