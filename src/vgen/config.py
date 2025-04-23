@@ -16,25 +16,26 @@ def clean_verilog_file(file_path, cleaned_file_path):
         print(f"Error cleaning {file_path}: {e}")
         exit(1)
 
-Target_Problem = """Please act as a professional verilog designer.
+Target_Problem = """Please act as a professional Verilog designer.
 
-Implement a 16-bit divider module, the dividend is 16-bit and the divider is 8-bit in combinational logic. Extract the higher bits of the dividend, matching the bit width of the divisor. Compare these bits with the divisor: if the dividend bits are greater, set the quotient to 1, otherwise set it to 0, and use the difference as the remainder. Concatenate the remainder with the highest remaining 1-bit of the dividend, and repeat the process until all dividend bits are processed.
+Implement a module of an 8-bit multiplier based on shifting and adding operations.
 
-Module name:
-    div_16bit
-
+Module name:  
+    multi_8bit               
 Input ports:
-    A: 16-bit dividend.
-    B: 8-bit divisor.
-
+    A [7:0]: First 8-bit input operand (representing a multiplicand).
+    B [7:0]: Second 8-bit input operand (representing a multiplier).
 Output ports:
-    result: 16-bit quotient.
-    odd: 16-bit remainder.
+    product [15:0]: 16-bit output representing the product of the two 8-bit inputs (A * B).
 
 Implementation:
-The module uses two always blocks to perform the division operation.
-The first always block is a combinational block triggered by any change in the input values A and B. It updates the values of two registers, a_reg and b_reg, with the values of A and B, respectively.
-The second always block is also a combinational block triggered by any change in the input values A and B.
+Multiplication: The module performs multiplication of A and B using the shift-and-add method.
+- The algorithm iterates through each bit of the multiplier (B). For each bit that is set (1), the multiplicand (A) is added to the product at the corresponding shifted position.
+- The process continues until all bits of the multiplier have been processed.
+
+Shifting: After each addition, the multiplicand is logically shifted left by one bit to prepare for the next addition, simulating the traditional multiplication process.
+
+The final product is stored in the output port, which is 16 bits wide to accommodate the maximum possible product of two 8-bit numbers.
 
 Give me the complete code.
  """

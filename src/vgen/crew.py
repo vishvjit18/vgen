@@ -6,12 +6,15 @@ import os
 import json
 from vgen.config import clean_verilog_file, Target_Problem  # Add this import at the top
 from vgen.tools.custom_tool import run_icarus_verilog
+from langchain_community.chat_models import ChatLiteLLM
 
 def get_gemini_pro_crew():
     return LLM(
         api_key=os.getenv("GEMINI_API_KEY"),
         model="gemini/gemini-2.0-flash",
     )
+
+llm = ChatLiteLLM(model="azure/o3-mini", temperature=0.7)
 
 llm_groq = LLM(model="groq/llama3-70b-8192")
 
@@ -33,6 +36,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['planner'],
             verbose=True,
+            llm=llm
         )
     
     @crew
@@ -42,7 +46,6 @@ class Vgen():
             agents=[self.planner()],
             tasks=[self.high_level_planning_task()],
             process=Process.sequential,
-            llm=get_gemini_pro_crew(),
             verbose=True,
             memory=True,
             embedder={
@@ -56,7 +59,8 @@ class Vgen():
     def verilog_agent(self) -> Agent:
         return Agent(
             config=self.agents_config['verilog_agent'],
-            verbose=True
+            verbose=True,
+            llm=llm
         )
     
     
@@ -211,7 +215,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['testbench_fixer_agent'],
             verbose=True,
-            llm=llm_openrouter
+            llm=llm
         )
 
     # @task
@@ -254,6 +258,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['verilog_merger'],
             verbose=True,
+            llm=llm
         )
     
     @task
@@ -311,7 +316,8 @@ class Vgen():
         return Agent(
             config=self.agents_config['iverilog_agent'],
             tools=[run_icarus_verilog],
-            verbose=True
+            verbose=True,
+            llm=get_gemini_pro_crew()
         )
         
     @crew
@@ -330,41 +336,93 @@ class Vgen():
             output_log_file=os.path.join(".crew", "logs", "iverilog_simulation.json"),
         )
         
+    # @task
+    # def fix_testbench_task(self) -> Task:
+    #     try:
+    #         with open("iverilog_report.json", "r") as f:
+    #             data = json.load(f)
+    #         testbench_file = data.get("files", {}).get("testbench", {}).get("content", "")
+    #         suggestions = data.get("files", {}).get("testbench", {}).get("suggestions", "")
+    #     except Exception as e:
+    #         print(f"Error loading iverilog_report.json: {e}")
+    #         testbench_file = ""
+    #         suggestions = ""
+        
+    #     task_config = self.tasks_config['fix_testbench_task'].copy()
+
+    #     task= Task(
+    #         name="fix_testbench_task",
+    #         config=task_config,
+    #         agent=self.testbench_fixer_agent(),
+    #         output_file="fixed_testbench.sv",
+    #         context=[]
+    #     )
+        
+    #     task.interpolate_inputs_and_add_conversation_history({
+    #         "testbench_file": testbench_file,
+    #         "suggestions": suggestions
+    #     })
+        
+    #     return task
+    
+    # @crew
+    # def testbench_fixer_crew(self) -> Crew:
+    #     """Testbench Fixer crew"""
+    #     return Crew(
+    #         agents=[self.testbench_fixer_agent()],
+    #         tasks=[self.fix_testbench_task()],
+    #         process=Process.sequential,
+    #         verbose=True,
+    #         memory=True,
+    #         embedder={
+    #             "provider": "ollama",
+    #             "config": {"model": "all-minilm"}
+    #         },
+    #         output_log_file=os.path.join(".crew", "logs", "testbench.json"),
+    #     )
+
     @task
-    def fix_testbench_task(self) -> Task:
+    def fix_design_task(self) -> Task:
         try:
             with open("iverilog_report.json", "r") as f:
                 data = json.load(f)
-            testbench_file = data.get("files", {}).get("testbench", {}).get("content", "")
-            suggestions = data.get("files", {}).get("testbench", {}).get("suggestions", "")
+            design_file = data.get("files", {}).get("design", {}).get("content", "")
+            suggestions = data.get("files", {}).get("design", {}).get("suggestions", "")
         except Exception as e:
             print(f"Error loading iverilog_report.json: {e}")
-            testbench_file = ""
+            design_file = ""
             suggestions = ""
         
-        task_config = self.tasks_config['fix_testbench_task'].copy()
+        task_config = self.tasks_config['fix_design_task'].copy()
 
-        task= Task(
-            name="fix_testbench_task",
+        task = Task(
+            name="fix_design_task",
             config=task_config,
-            agent=self.testbench_fixer_agent(),
-            output_file="fixed_testbench.sv",
+            agent=self.design_fixer_agent(),
+            output_file="fixed_design.sv",
             context=[]
         )
         
         task.interpolate_inputs_and_add_conversation_history({
-            "testbench_file": testbench_file,
+            "design_file": design_file,
             "suggestions": suggestions
         })
         
         return task
-    
+    @agent
+    def design_fixer_agent(self) -> Agent:
+        return Agent(
+            config=self.agents_config['design_fixer_agent'],
+            llm=llm,
+            tools=[],
+            verbose=True
+        )
     @crew
-    def testbench_fixer_crew(self) -> Crew:
-        """Testbench Fixer crew"""
+    def Design_fixer_crew(self) -> Crew:
+        """Icarus simulation crew"""
         return Crew(
-            agents=[self.testbench_fixer_agent()],
-            tasks=[self.fix_testbench_task()],
+            agents=[self.design_fixer_agent()],
+            tasks=[self.fix_design_task()],
             process=Process.sequential,
             verbose=True,
             memory=True,
@@ -372,12 +430,12 @@ class Vgen():
                 "provider": "ollama",
                 "config": {"model": "all-minilm"}
             },
-            output_log_file=os.path.join(".crew", "logs", "testbench.json"),
-        )
+            output_log_file=os.path.join(".crew", "logs", "iverilog_simulation.json"),
+        ) 
 
-    def _save_fixed_testbench_results(self, results):
+    def _save_fixed_design_results(self, results):
         """
-        Save the results from the testbench fixer crew by cleaning and writing to testbench.sv
+        Save the results from the design fixer crew by cleaning and writing to design.sv
         """
         # Handle CrewOutput objects
         processed_results = []
@@ -393,14 +451,74 @@ class Vgen():
         final_code = "\n\n".join(processed_results)
         
         # Write raw output to a temporary file
-        temp_file = "fixed_testbench_raw.sv"
+        temp_file = "fixed_design_raw.sv"
         with open(temp_file, "w") as f:
             f.write(final_code)
         
         # Use the clean_verilog_file function to clean the output
-        output_file = "testbench.sv"  # Overwrite the original testbench file
+        output_file = "design.sv"  # Overwrite the original design file
         clean_verilog_file(temp_file, output_file)
-        print(f"Saved cleaned fixed testbench code to {output_file}") 
+        print(f"Saved cleaned fixed design code to {output_file}") 
+
+    # @task
+    # def Rerun_task(self) -> Task:
+    #     return Task(
+    #         name="Rerun_task",
+    #         config=self.tasks_config['Rerun_task'],
+    #         agent=self.Rerun_agent(),
+    #     )
+    # @agent
+    # def Rerun_agent(self) -> Agent:
+    #     return Agent(
+    #         config=self.agents_config['Rerun_agent'],
+    #         tools=[run_icarus_verilog],
+    #         verbose=True
+    #     )
+    # @crew
+    # def Rerun_crew(self) -> Crew:
+    #     """Icarus simulation crew"""
+    #     return Crew(
+    #         agents=[self.Rerun_agent()],
+    #         tasks=[self.Rerun_task()],
+    #         process=Process.sequential,
+    #         verbose=True,
+    #         memory=True,
+    #         embedder={
+    #             "provider": "ollama",
+    #             "config": {"model": "all-minilm"}
+    #         },
+    #         output_log_file=os.path.join(".crew", "logs", "iverilog_simulation.json"),
+    #     )   
+
+    # @task
+    # def Rerun_task(self) -> Task:
+    #     return Task(
+    #         name="Rerun_task",
+    #         config=self.tasks_config['Rerun_task'],
+    #         agent=self.Rerun_agent(),
+    #     )
+    # @agent
+    # def Rerun_agent(self) -> Agent:
+    #     return Agent(
+    #         config=self.agents_config['Rerun_agent'],
+    #         tools=[run_icarus_verilog],
+    #         verbose=True
+    #     )
+    # @crew
+    # def Rerun_crew(self) -> Crew:
+    #     """Icarus simulation crew"""
+    #     return Crew(
+    #         agents=[self.Rerun_agent()],
+    #         tasks=[self.Rerun_task()],
+    #         process=Process.sequential,
+    #         verbose=True,
+    #         memory=True,
+    #         embedder={
+    #             "provider": "ollama",
+    #             "config": {"model": "all-minilm"}
+    #         },
+    #         output_log_file=os.path.join(".crew", "logs", "iverilog_simulation.json"),
+    #     )   
 
     @task
     def Rerun_task(self) -> Task:
@@ -414,7 +532,8 @@ class Vgen():
         return Agent(
             config=self.agents_config['Rerun_agent'],
             tools=[run_icarus_verilog],
-            verbose=True
+            verbose=True,
+            llm=get_gemini_pro_crew()
         )
     @crew
     def Rerun_crew(self) -> Crew:
@@ -431,33 +550,3 @@ class Vgen():
             },
             output_log_file=os.path.join(".crew", "logs", "iverilog_simulation.json"),
         )   
-
-    @task
-    def fix_design_task(self) -> Task:
-        return Task(
-            name="fix_design_task",
-            config=self.tasks_config['fix_design_task'],
-            agent=self.design_fixer_agent(),
-        )
-    @agent
-    def design_fixer_agent(self) -> Agent:
-        return Agent(
-            config=self.agents_config['design_fixer_agent'],
-            tools=[run_icarus_verilog],
-            verbose=True
-        )
-    @crew
-    def Rerun_crew(self) -> Crew:
-        """Icarus simulation crew"""
-        return Crew(
-            agents=[self.design_fixer_agent()],
-            tasks=[self.fix_design_task()],
-            process=Process.sequential,
-            verbose=True,
-            memory=True,
-            embedder={
-                "provider": "ollama",
-                "config": {"model": "all-minilm"}
-            },
-            output_log_file=os.path.join(".crew", "logs", "iverilog_simulation.json"),
-        ) 
