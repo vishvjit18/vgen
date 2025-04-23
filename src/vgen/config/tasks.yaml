@@ -71,8 +71,9 @@ iverilog_task:
     3. If simulation is successful, analyze the output for correctness
     4. Do not modify the design.sv and testbench.sv files directly, only provide suggestions
   expected_output: >
-    The expected output should be a JSON object same as the input JSON object just add one suggesions key inside files/testbench/ or files/design/ containing specific suggestions for fixing compilation error if status is success leave suggesions empty for both. 
-    The output should help downstream agents understand what went wrong and how to fix it.
+    Regardless of tool output expected output should be a JSON object same as the input JSON object just add one suggesions key inside files/testbench/ or files/design/ containing specific suggestions for 
+    fixing compilation error if status is success leave suggesions empty for both. 
+    The output should help downstream agents understand what went wrong and how to fix it and do not add any additional information above or below the JSON object.
     The output should be a JSON object with the following fields:
     {
       "status": "",
@@ -106,18 +107,18 @@ fix_design_task:
     A corrected version of design.sv.
   agent: design_fixer_agent
 
-fix_testbench_task:
-  description: >
-    You are provided with:
-    - Suggestions for fixing: {suggestions}
-    - The previous testbench.sv file: {testbench_file}
+# fix_testbench_task:
+#   description: >
+#     You are provided with:
+#     - Suggestions for fixing: {suggestions}
+#     - The previous testbench.sv file: {testbench_file}
     
 
-    Modify the testbench logic to resolve the issue. Return the fixed version of testbench.sv.
+#     Modify the testbench logic to resolve the issue. Return the fixed version of testbench.sv.
 
-  expected_output: >
-    A corrected version of testbench.sv.
-  agent: testbench_fixer_agent
+#   expected_output: >
+#     A corrected version of testbench.sv.
+#   agent: testbench_fixer_agent
 
 Rerun_task:
   description: >
@@ -129,5 +130,5 @@ Rerun_task:
     3. If simulation is successful, analyze the output for correctness
 
   expected_output: >
-    If the testbench is not working, provide a suggestions for the testbench file based on simulation results otherwise return the same testbench file.
+    If the design.sv is not working, provide a suggestions based on simulation results otherwise return the same design.sv file.
   agent: Rerun_agent

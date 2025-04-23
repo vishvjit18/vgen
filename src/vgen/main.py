@@ -91,22 +91,36 @@ def run():
         # Vgen()._save_fixed_testbench_results([testbench_fixer_output])
         # print("\n==== FIXED TESTBENCH SAVED ====\n")
 
-        # 11. Run the testbench again
-        # print("\n==== RUNNING ICARUS VERILOG SIMULATION ====\n")
-        # Rerun_crew = Vgen().Rerun_crew()
-        # Rerun_output = Rerun_crew.kickoff()
-        # print(Rerun_output)
-        # print("\n==== SIMULATION COMPLETE ====\n")
+        #Run the design fixer crew
+        print("\n==== RUNNING DESIGN FIXER CREW ====\n")
+        Design_fixer_crew = Vgen().Design_fixer_crew()
+        design_fixer_output = Design_fixer_crew.kickoff()
+        print(design_fixer_output)
+        # Save the fixed testbench using the clean_verilog_file function
+        Vgen()._save_fixed_design_results([design_fixer_output])
+        print("\n==== FIXED DESIGN SAVED ====\n")
+
+        print("\n==== RUNNING ICARUS VERILOG SIMULATION ====\n")
+        icarus_crew = Vgen().icarus_crew()
+        simulation_output = icarus_crew.kickoff()
+        print(simulation_output)
+        print("\n==== SIMULATION COMPLETE ====\n")
 
         #Run the design fixer crew
         print("\n==== RUNNING DESIGN FIXER CREW ====\n")
-        Rerun_crew = Vgen().Rerun_crew()
-        design_fixer_output = Rerun_crew.kickoff()
+        Design_fixer_crew = Vgen().Design_fixer_crew()
+        design_fixer_output = Design_fixer_crew.kickoff()
         print(design_fixer_output)
-        
         # Save the fixed testbench using the clean_verilog_file function
-        Vgen()._save_fixed_testbench_results([design_fixer_output])
+        Vgen()._save_fixed_design_results([design_fixer_output])
         print("\n==== FIXED DESIGN SAVED ====\n")
+
+        # 11. Run the design again
+        print("\n==== RUNNING ICARUS VERILOG SIMULATION ====\n")
+        Rerun_crew = Vgen().Rerun_crew()
+        Rerun_output = Rerun_crew.kickoff()
+        print(Rerun_output)
+        print("\n==== SIMULATION COMPLETE ====\n")
 
         print("\n==== CLEANING UP SUBTASK FILES ====\n")
         subtask_files = glob.glob("subtask_*.v")
@@ -143,12 +157,13 @@ def test():
     """
     Test the crew execution and returns the results.
     """
-    inputs = {
-        "Target_Problem": "write a verilog code for a 4-bit adder",
-        "current_year": str(datetime.now().year)
-    }
+ 
     try:
-        Vgen().crew().test(n_iterations=int(sys.argv[1]), openai_model_name=sys.argv[2], inputs=inputs)
+        print("\n==== RUNNING ICARUS VERILOG SIMULATION ====\n")
+        icarus_crew = Vgen().icarus_crew()
+        simulation_output = icarus_crew.kickoff()
+        print(simulation_output)
+        print("\n==== SIMULATION COMPLETE ====\n")
 
     except Exception as e:
         raise Exception(f"An error occurred while testing the crew: {e}")
