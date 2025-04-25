@@ -7,6 +7,8 @@ import json
 from vgen.config import clean_verilog_file, Target_Problem  # Add this import at the top
 from vgen.tools.custom_tool import run_icarus_verilog
 from langchain_community.chat_models import ChatLiteLLM
+from langchain_openai import ChatOpenAI
+
 
 def get_gemini_pro_crew():
     return LLM(
@@ -16,13 +18,19 @@ def get_gemini_pro_crew():
 
 llm = ChatLiteLLM(model="azure/o3-mini", temperature=0.7)
 
-llm_groq = LLM(model="groq/llama3-70b-8192")
-
-llm_openrouter = LLM(
-    model="openrouter/qwen/qwen-2.5-coder-32b-instruct:free",
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPEN_ROUTER_API_KEY"),
+llm_lmstudio = ChatOpenAI(
+    openai_api_base="http://localhost:1234/v1",
+    openai_api_key="",
+    model_name="qwen2.5-coder-0.5b-instruct"
 )
+
+# llm_groq = LLM(model="groq/llama3-70b-8192")
+
+# llm_openrouter = LLM(
+#     model="openrouter/qwen/qwen-2.5-coder-32b-instruct:free",
+#     base_url="https://openrouter.ai/api/v1",
+#     api_key=os.getenv("OPEN_ROUTER_API_KEY"),
+# )
 
 @CrewBase
 class Vgen():
@@ -36,7 +44,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['planner'],
             verbose=True,
-            llm=llm
+            llm=llm_lmstudio
         )
     
     @crew
