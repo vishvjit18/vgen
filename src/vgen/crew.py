@@ -157,7 +157,7 @@ class Vgen():
         return [
             Task(
                 name=f"verilog_subtask_{i+1}",
-                description=task_template['description'].format(content=sub['content']),
+                description=task_template['description'].format(content=sub['content'], source=sub['source']),
                 expected_output=task_template['expected_output'],
                 agent=agent,
                 human_input=False,

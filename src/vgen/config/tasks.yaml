@@ -26,6 +26,9 @@ verilog_conversion:
     
    Subtask description:
    {content}
+
+   Source description:
+   {source}
     
    Only return the Verilog code for this step.
   expected_output: >
