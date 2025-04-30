@@ -91,36 +91,49 @@ def run():
         # Vgen()._save_fixed_testbench_results([testbench_fixer_output])
         # print("\n==== FIXED TESTBENCH SAVED ====\n")
 
-        #Run the design fixer crew
-        print("\n==== RUNNING DESIGN FIXER CREW ====\n")
-        Design_fixer_crew = Vgen().Design_fixer_crew()
-        design_fixer_output = Design_fixer_crew.kickoff()
-        print(design_fixer_output)
-        # Save the fixed testbench using the clean_verilog_file function
-        Vgen()._save_fixed_design_results([design_fixer_output])
-        print("\n==== FIXED DESIGN SAVED ====\n")
+        # CONDITIONAL CHECK
+        try:
+            with open('iverilog_report.json', 'r') as f:
+                iverilog_report = json.load(f)
+            design_suggestions_empty = iverilog_report.get('files', {}).get('design', {}).get('suggestions', '') == ''
+        except Exception as e:
+            print(f"Error reading iverilog_report.json: {e}")
+            design_suggestions_empty = False  # Default to original behavior if file can't be read
+            
+        if design_suggestions_empty:
+            print("Design suggestions are empty. Halting workflow.")
+        else:
+            print("Design has suggestions. Running DESIGN FIXER CREW...")
+            #Run the design fixer crew
+            print("\n==== RUNNING DESIGN FIXER CREW ====\n")
+            Design_fixer_crew = Vgen().Design_fixer_crew()
+            design_fixer_output = Design_fixer_crew.kickoff()
+            print(design_fixer_output)
+            # Save the fixed testbench using the clean_verilog_file function
+            Vgen()._save_fixed_design_results([design_fixer_output])
+            print("\n==== FIXED DESIGN SAVED ====\n")
 
-        print("\n==== RUNNING ICARUS VERILOG SIMULATION ====\n")
-        icarus_crew = Vgen().icarus_crew()
-        simulation_output = icarus_crew.kickoff()
-        print(simulation_output)
-        print("\n==== SIMULATION COMPLETE ====\n")
+        # print("\n==== RUNNING ICARUS VERILOG SIMULATION ====\n")
+        # icarus_crew = Vgen().icarus_crew()
+        # simulation_output = icarus_crew.kickoff()
+        # print(simulation_output)
+        # print("\n==== SIMULATION COMPLETE ====\n")
 
-        #Run the design fixer crew
-        print("\n==== RUNNING DESIGN FIXER CREW ====\n")
-        Design_fixer_crew = Vgen().Design_fixer_crew()
-        design_fixer_output = Design_fixer_crew.kickoff()
-        print(design_fixer_output)
-        # Save the fixed testbench using the clean_verilog_file function
-        Vgen()._save_fixed_design_results([design_fixer_output])
-        print("\n==== FIXED DESIGN SAVED ====\n")
+        # #Run the design fixer crew
+        # print("\n==== RUNNING DESIGN FIXER CREW ====\n")
+        # Design_fixer_crew = Vgen().Design_fixer_crew()
+        # design_fixer_output = Design_fixer_crew.kickoff()
+        # print(design_fixer_output)
+        # # Save the fixed testbench using the clean_verilog_file function
+        # Vgen()._save_fixed_design_results([design_fixer_output])
+        # print("\n==== FIXED DESIGN SAVED ====\n")
 
-        # 11. Run the design again
-        print("\n==== RUNNING ICARUS VERILOG SIMULATION ====\n")
-        Rerun_crew = Vgen().Rerun_crew()
-        Rerun_output = Rerun_crew.kickoff()
-        print(Rerun_output)
-        print("\n==== SIMULATION COMPLETE ====\n")
+        # # 11. Run the design again
+        # print("\n==== RUNNING ICARUS VERILOG SIMULATION ====\n")
+        # Rerun_crew = Vgen().Rerun_crew()
+        # Rerun_output = Rerun_crew.kickoff()
+        # print(Rerun_output)
+        # print("\n==== SIMULATION COMPLETE ====\n")
 
         print("\n==== CLEANING UP SUBTASK FILES ====\n")
         subtask_files = glob.glob("subtask_*.v")
@@ -159,11 +172,7 @@ def test():
     """
  
     try:
-        print("\n==== RUNNING ICARUS VERILOG SIMULATION ====\n")
-        icarus_crew = Vgen().icarus_crew()
-        simulation_output = icarus_crew.kickoff()
-        print(simulation_output)
-        print("\n==== SIMULATION COMPLETE ====\n")
+        Vgen().crew().test()
 
     except Exception as e:
         raise Exception(f"An error occurred while testing the crew: {e}")
