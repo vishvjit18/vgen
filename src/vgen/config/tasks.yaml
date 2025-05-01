@@ -122,16 +122,3 @@ fix_design_task:
 #   expected_output: >
 #     A corrected version of testbench.sv.
 #   agent: testbench_fixer_agent
-
-Rerun_task:
-  description: >
-    Compile and run the Verilog source file design.sv along with the testbench testbench.sv, 
-    and provide a report based on the structured JSON output from simulation results.
-    Based on this structured data:
-    1. Identify if there are any issues with the testbench
-    2. Provide specific suggestions to fix any errors
-    3. If simulation is successful, analyze the output for correctness
-
-  expected_output: >
-    If the design.sv is not working, provide a suggestions based on simulation results otherwise return the same design.sv file.
-  agent: Rerun_agent

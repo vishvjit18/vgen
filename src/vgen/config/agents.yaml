@@ -48,14 +48,6 @@ iverilog_agent:
     You are responsible for compiling and running the Verilog source file along with the testbench.
   allow_delegation: False
 
-Rerun_agent:
-  role: Verilog Simulation Engineer
-  goal: Compile and run the Verilog source file along with the testbench and if it fails, provide a suggestions based on simulation results.
-  backstory: >
-    You are an expert in Verilog simulation with extensive experience in using Icarus Verilog for simulation.
-    You are responsible for compiling and running the Verilog source file along with the testbench.
-  allow_delegation: False
-
 design_fixer_agent:
   role: Verilog Design Fixer
   goal: Analyze compile/simulation errors in design.sv and fix them

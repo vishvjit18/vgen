@@ -20,8 +20,9 @@ llm = ChatLiteLLM(model="azure/o3-mini", temperature=0.7)
 
 llm_lmstudio = ChatOpenAI(
     openai_api_base="http://localhost:1234/v1",
-    openai_api_key="",
-    model_name="qwen2.5-coder-0.5b-instruct"
+    openai_api_key="no-key-needed",
+    model_name="openai/qwen3-14b",
+    temperature=0.7,
 )
 
 # llm_groq = LLM(model="groq/llama3-70b-8192")
