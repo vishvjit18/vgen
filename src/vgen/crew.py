@@ -45,7 +45,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['planner'],
             verbose=True,
-            llm=llm_lmstudio
+            llm=llm
         )
     
     @crew
