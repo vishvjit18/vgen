@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VGen CrewAI API</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #2c3e50;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        textarea, select, button, input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            border: none;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #output {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+        .stage-label {
+            font-weight: bold;
+            color: #3498db;
+            margin-right: 10px;
+        }
+        .timestamp {
+            color: #7f8c8d;
+            font-size: 0.85em;
+        }
+        .warning {
+            color: #e74c3c;
+            margin-top: 10px;
+        }
+        .human-input-form {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f1c40f20;
+            border-radius: 8px;
+            border: 1px solid #f1c40f;
+            display: none;
+        }
+        .human-input-form.active {
+            display: block;
+        }
+        .feedback-hint {
+            font-style: italic;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+        .human-input-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .human-input-actions button {
+            flex: 1;
+        }
+        #humanInputButton {
+            background-color: #2ecc71;
+        }
+        #humanInputButton:hover {
+            background-color: #27ae60;
+        }
+        #acceptButton {
+            background-color: #2ecc71;
+        }
+        #acceptButton:hover {
+            background-color: #27ae60;
+        }
+    </style>
+</head>
+<body>
+    <h1>VGen CrewAI API Interface</h1>
+    
+    <div class="card">
+        <h2>Create New Run</h2>
+        
+        <div class="form-group">
+            <label for="runType">Run Type:</label>
+            <select id="runType">
+                <option value="full">Full Process</option>
+                <option value="planning">Planning Only</option>
+                <option value="subtasks">Subtasks Only</option>
+                <option value="merging">Merging Only</option>
+                <option value="iverilog">Icarus Verilog Only</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="problem">Problem Statement:</label>
+            <textarea id="problem">Please act as a professional Verilog designer.
+
+Implement a module of an 8-bit multiplier based on shifting and adding operations.
+
+Module name:  
+    multi_8bit               
+Input ports:
+    A [7:0]: First 8-bit input operand (representing a multiplicand).
+    B [7:0]: Second 8-bit input operand (representing a multiplier).
+Output ports:
+    product [15:0]: 16-bit output representing the product of the two 8-bit inputs (A * B).
+
+Implementation:
+Multiplication: The module performs multiplication of A and B using the shift-and-add method.
+- The algorithm iterates through each bit of the multiplier (B). For each bit that is set (1), the multiplicand (A) is added to the product at the corresponding shifted position.
+- The process continues until all bits of the multiplier have been processed.
+
+Shifting: After each addition, the multiplicand is logically shifted left by one bit to prepare for the next addition, simulating the traditional multiplication process.
+
+The final product is stored in the output port, which is 16 bits wide to accommodate the maximum possible product of two 8-bit numbers.
+
+Give me the complete code.</textarea>
+        </div>
+        
+        <button id="startButton">Start Run</button>
+        
+        <div class="warning" id="warning" style="display: none;">
+            Warning: This process may take several minutes to complete.
+        </div>
+    </div>
+    
+    <div id="humanInputContainer" class="human-input-form">
+        <h3>Human Input Required</h3>
+        <div class="feedback-hint">
+            If you are happy with the result, just click "Accept" (equivalent to hitting Enter).<br>
+            Otherwise, provide specific improvement requests in the text field below.
+        </div>
+        
+        <div class="form-group">
+            <label for="humanInput">Your feedback (optional):</label>
+            <textarea id="humanInput" rows="3" placeholder="Enter feedback or leave blank to accept"></textarea>
+        </div>
+        
+        <div class="human-input-actions">
+            <button id="acceptButton">Accept (Empty Input)</button>
+            <button id="humanInputButton">Submit Feedback</button>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>Output</h2>
+        <div id="output">No run started yet.</div>
+    </div>
+    
+    <script>
+        let eventSource = null;
+        let currentRunId = null;
+        
+        document.getElementById('startButton').addEventListener('click', async function() {
+            const runType = document.getElementById('runType').value;
+            const problem = document.getElementById('problem').value;
+            const outputDiv = document.getElementById('output');
+            
+            // Show warning
+            document.getElementById('warning').style.display = 'block';
+            
+            // Disable the button
+            this.disabled = true;
+            this.textContent = 'Processing...';
+            
+            outputDiv.textContent = 'Starting run...';
+            
+            try {
+                // Start the run
+                const response = await fetch('/run', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        run_type: runType,
+                        problem: problem
+                    }),
+                });
+                
+                const data = await response.json();
+                const runId = data.run_id;
+                currentRunId = runId;
+                
+                outputDiv.textContent = `Run started with ID: ${runId}\n\nConnecting to stream...`;
+                
+                // Close any existing connection
+                if (eventSource) {
+                    eventSource.close();
+                }
+                
+                // Connect to the event stream
+                eventSource = new EventSource(`/run/${runId}/stream`);
+                
+                eventSource.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    
+                    // Check if waiting for human input
+                    if (data.status === 'waiting_for_input') {
+                        // Show the human input form
+                        document.getElementById('humanInputContainer').classList.add('active');
+                        return;
+                    }
+                    
+                    // Add the new message to the output
+                    if (data.stage && data.message) {
+                        const timestamp = new Date(data.timestamp || Date.now()).toLocaleTimeString();
+                        const message = document.createElement('div');
+                        message.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="stage-label">${data.stage}:</span> ${data.message}`;
+                        
+                        if (data.output) {
+                            const output = document.createElement('pre');
+                            output.textContent = data.output;
+                            output.style.maxHeight = '200px';
+                            output.style.overflow = 'auto';
+                            output.style.backgroundColor = '#f0f0f0';
+                            output.style.padding = '8px';
+                            output.style.marginTop = '5px';
+                            output.style.marginBottom = '15px';
+                            output.style.borderRadius = '4px';
+                            message.appendChild(output);
+                        }
+                        
+                        outputDiv.appendChild(message);
+                        
+                        // Auto-scroll to bottom
+                        outputDiv.scrollTop = outputDiv.scrollHeight;
+                    }
+                    
+                    // Check if the run is completed
+                    if (data.status === 'completed' || data.status === 'failed') {
+                        eventSource.close();
+                        document.getElementById('startButton').disabled = false;
+                        document.getElementById('startButton').textContent = 'Start Run';
+                        document.getElementById('humanInputContainer').classList.remove('active');
+                    }
+                };
+                
+                eventSource.onerror = function() {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.innerHTML = '<span class="stage-label">ERROR:</span> Connection to event stream failed.';
+                    outputDiv.appendChild(errorDiv);
+                    
+                    document.getElementById('startButton').disabled = false;
+                    document.getElementById('startButton').textContent = 'Start Run';
+                    eventSource.close();
+                };
+                
+            } catch (error) {
+                outputDiv.textContent = `Error: ${error.message}`;
+                document.getElementById('startButton').disabled = false;
+                document.getElementById('startButton').textContent = 'Start Run';
+            }
+        });
+        
+        // Handle human input submission
+        async function submitHumanInput(input) {
+            if (!currentRunId) return;
+            
+            try {
+                const response = await fetch(`/run/${currentRunId}/input`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        input: input
+                    }),
+                });
+                
+                if (response.ok) {
+                    // Hide the human input form
+                    document.getElementById('humanInputContainer').classList.remove('active');
+                    document.getElementById('humanInput').value = '';
+                    
+                    // Add a note to the output
+                    const outputDiv = document.getElementById('output');
+                    const message = document.createElement('div');
+                    message.innerHTML = `<span class="timestamp">[${new Date().toLocaleTimeString()}]</span> <span class="stage-label">USER:</span> Provided input: ${input || '<empty>'}`;
+                    outputDiv.appendChild(message);
+                } else {
+                    const data = await response.json();
+                    alert(`Error: ${data.detail}`);
+                }
+            } catch (error) {
+                alert(`Error submitting input: ${error.message}`);
+            }
+        }
+        
+        // Event listeners for human input
+        document.getElementById('acceptButton').addEventListener('click', function() {
+            // Submit empty input (equivalent to pressing Enter)
+            submitHumanInput('');
+        });
+        
+        document.getElementById('humanInputButton').addEventListener('click', function() {
+            const input = document.getElementById('humanInput').value;
+            submitHumanInput(input);
+        });
+        
+        // Also allow submitting by pressing Enter in the textarea
+        document.getElementById('humanInput').addEventListener('keydown', function(e) {
+            // Check for Ctrl+Enter
+            if (e.key === 'Enter' && e.ctrlKey) {
+                e.preventDefault();
+                const input = document.getElementById('humanInput').value;
+                submitHumanInput(input);
+            }
+        });
+    </script>
+</body>
+</html> 

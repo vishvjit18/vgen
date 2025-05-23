@@ -1,0 +1,10 @@
+fastapi>=0.104.0
+uvicorn>=0.23.0
+pydantic>=2.4.0
+python-dotenv>=1.0.0
+crewai>=0.28.0
+langchain>=0.1.0
+langchain-openai>=0.0.5
+langchain-community>=0.0.13
+pytz>=2023.3
+pysbd>=0.3.4 

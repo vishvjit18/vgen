@@ -45,7 +45,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['planner'],
             verbose=True,
-            llm=llm
+            llm=get_gemini_pro_crew(),
         )
     
     @crew
@@ -69,7 +69,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['verilog_agent'],
             verbose=True,
-            llm=llm
+            llm=get_gemini_pro_crew()
         )
     
     
@@ -79,7 +79,7 @@ class Vgen():
         return Task(
             config=self.tasks_config['high_level_planning_task'],
             output_file='high_level_planning_task.md',
-            human_input=False
+            human_input=True,
         )
 
     def _load_subtasks(self):
@@ -161,7 +161,7 @@ class Vgen():
                 description=task_template['description'].format(content=sub['content'], source=sub['source']),
                 expected_output=task_template['expected_output'],
                 agent=agent,
-                human_input=False,
+                human_input=True,
                 output_file=f"subtask_{i+1}.v"  # Save each subtask output to a file
             )
             for i, sub in enumerate(subtasks)
@@ -224,7 +224,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['testbench_fixer_agent'],
             verbose=True,
-            llm=llm
+            llm=get_gemini_pro_crew()
         )
 
     # @task
@@ -267,7 +267,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['verilog_merger'],
             verbose=True,
-            llm=llm
+            llm=get_gemini_pro_crew()
         )
     
     @task
@@ -283,7 +283,7 @@ class Vgen():
             name="verilog_merging",
             config=self.tasks_config['verilog_merging'].copy(),
             agent=self.merger_agent(),
-            human_input=False,
+            human_input=True,
             output_file='design.sv',
             context=[]  # Empty list since we'll pass code directly via interpolation
         )
@@ -422,7 +422,7 @@ class Vgen():
     def design_fixer_agent(self) -> Agent:
         return Agent(
             config=self.agents_config['design_fixer_agent'],
-            llm=llm,
+            llm=get_gemini_pro_crew(),
             tools=[],
             verbose=True
         )
