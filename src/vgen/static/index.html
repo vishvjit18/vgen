@@ -56,7 +56,7 @@
             border: 1px solid #ddd;
             border-radius: 4px;
             padding: 10px;
-            max-height: 400px;
+            max-height: 500px;
             overflow-y: auto;
             background-color: #f9f9f9;
             font-family: monospace;
@@ -67,6 +67,35 @@
             font-weight: bold;
             color: #3498db;
             margin-right: 10px;
+        }
+        .subtask-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 3px solid #2ecc71;
+            background-color: #f0f0f0;
+        }
+        .subtask-header {
+            font-weight: bold;
+            color: #2ecc71;
+            margin-bottom: 5px;
+        }
+        .subtask-error {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 3px solid #e74c3c;
+            background-color: #f0f0f0;
+        }
+        .pre-feedback {
+            margin: 15px 0;
+            padding: 15px;
+            border-left: 3px solid #9b59b6;
+            background-color: #f0f0f0;
+            border-radius: 6px;
+        }
+        .pre-feedback-header {
+            font-weight: bold;
+            color: #9b59b6;
+            margin-bottom: 10px;
         }
         .timestamp {
             color: #7f8c8d;
@@ -133,26 +162,25 @@
         
         <div class="form-group">
             <label for="problem">Problem Statement:</label>
-            <textarea id="problem">Please act as a professional Verilog designer.
+            <textarea id="problem">Please act as a professional verilog designer.
 
-Implement a module of an 8-bit multiplier based on shifting and adding operations.
+Implement a 16-bit divider module, the dividend is 16-bit and the divider is 8-bit in combinational logic. Extract the higher bits of the dividend, matching the bit width of the divisor. Compare these bits with the divisor: if the dividend bits are greater, set the quotient to 1, otherwise set it to 0, and use the difference as the remainder. Concatenate the remainder with the highest remaining 1-bit of the dividend, and repeat the process until all dividend bits are processed.
 
-Module name:  
-    multi_8bit               
+Module name:
+    div_16bit
+
 Input ports:
-    A [7:0]: First 8-bit input operand (representing a multiplicand).
-    B [7:0]: Second 8-bit input operand (representing a multiplier).
+    A: 16-bit dividend.
+    B: 8-bit divisor.
+
 Output ports:
-    product [15:0]: 16-bit output representing the product of the two 8-bit inputs (A * B).
+    result: 16-bit quotient.
+    odd: 16-bit remainder.
 
 Implementation:
-Multiplication: The module performs multiplication of A and B using the shift-and-add method.
-- The algorithm iterates through each bit of the multiplier (B). For each bit that is set (1), the multiplicand (A) is added to the product at the corresponding shifted position.
-- The process continues until all bits of the multiplier have been processed.
-
-Shifting: After each addition, the multiplicand is logically shifted left by one bit to prepare for the next addition, simulating the traditional multiplication process.
-
-The final product is stored in the output port, which is 16 bits wide to accommodate the maximum possible product of two 8-bit numbers.
+The module uses two always blocks to perform the division operation.
+The first always block is a combinational block triggered by any change in the input values A and B. It updates the values of two registers, a_reg and b_reg, with the values of A and B, respectively.
+The second always block is also a combinational block triggered by any change in the input values A and B.
 
 Give me the complete code.</textarea>
         </div>
@@ -167,6 +195,7 @@ Give me the complete code.</textarea>
     <div id="humanInputContainer" class="human-input-form">
         <h3>Human Input Required</h3>
         <div class="feedback-hint">
+            The AI's current output is displayed above for your review.<br>
             If you are happy with the result, just click "Accept" (equivalent to hitting Enter).<br>
             Otherwise, provide specific improvement requests in the text field below.
         </div>
@@ -246,19 +275,85 @@ Give me the complete code.</textarea>
                     if (data.stage && data.message) {
                         const timestamp = new Date(data.timestamp || Date.now()).toLocaleTimeString();
                         const message = document.createElement('div');
-                        message.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="stage-label">${data.stage}:</span> ${data.message}`;
                         
-                        if (data.output) {
-                            const output = document.createElement('pre');
-                            output.textContent = data.output;
-                            output.style.maxHeight = '200px';
-                            output.style.overflow = 'auto';
-                            output.style.backgroundColor = '#f0f0f0';
-                            output.style.padding = '8px';
-                            output.style.marginTop = '5px';
-                            output.style.marginBottom = '15px';
-                            output.style.borderRadius = '4px';
-                            message.appendChild(output);
+                        // Check if this is a subtask result
+                        if (data.stage === 'subtask_result') {
+                            message.innerHTML = `<span class="timestamp">[${timestamp}]</span>`;
+                            
+                            // Create a formatted subtask result box
+                            const subtaskResult = document.createElement('div');
+                            subtaskResult.className = 'subtask-result';
+                            
+                            // Add header
+                            const subtaskHeader = document.createElement('div');
+                            subtaskHeader.className = 'subtask-header';
+                            subtaskHeader.textContent = data.message;
+                            subtaskResult.appendChild(subtaskHeader);
+                            
+                            // Add code content
+                            if (data.output) {
+                                const output = document.createElement('pre');
+                                output.textContent = data.output;
+                                output.style.maxHeight = '200px';
+                                output.style.overflow = 'auto';
+                                output.style.margin = '5px 0';
+                                subtaskResult.appendChild(output);
+                            }
+                            
+                            message.appendChild(subtaskResult);
+                        }
+                        // Check if this is pre-feedback content
+                        else if (data.stage === 'pre_feedback') {
+                            message.innerHTML = `<span class="timestamp">[${timestamp}]</span>`;
+                            
+                            // Create a formatted pre-feedback box
+                            const preFeedback = document.createElement('div');
+                            preFeedback.className = 'pre-feedback';
+                            
+                            // Add header
+                            const preFeedbackHeader = document.createElement('div');
+                            preFeedbackHeader.className = 'pre-feedback-header';
+                            preFeedbackHeader.textContent = data.message;
+                            preFeedback.appendChild(preFeedbackHeader);
+                            
+                            // Add content
+                            if (data.content) {
+                                const content = document.createElement('pre');
+                                content.textContent = data.content;
+                                content.style.maxHeight = '400px';
+                                content.style.overflow = 'auto';
+                                content.style.margin = '5px 0';
+                                preFeedback.appendChild(content);
+                            }
+                            
+                            message.appendChild(preFeedback);
+                        }
+                        // Check if this is a subtask error
+                        else if (data.stage === 'subtask_error') {
+                            message.innerHTML = `<span class="timestamp">[${timestamp}]</span>`;
+                            
+                            // Create a formatted subtask error box
+                            const subtaskError = document.createElement('div');
+                            subtaskError.className = 'subtask-error';
+                            subtaskError.textContent = data.message;
+                            message.appendChild(subtaskError);
+                        }
+                        // Regular message
+                        else {
+                            message.innerHTML = `<span class="timestamp">[${timestamp}]</span> <span class="stage-label">${data.stage}:</span> ${data.message}`;
+                            
+                            if (data.output) {
+                                const output = document.createElement('pre');
+                                output.textContent = data.output;
+                                output.style.maxHeight = '200px';
+                                output.style.overflow = 'auto';
+                                output.style.backgroundColor = '#f0f0f0';
+                                output.style.padding = '8px';
+                                output.style.marginTop = '5px';
+                                output.style.marginBottom = '15px';
+                                output.style.borderRadius = '4px';
+                                message.appendChild(output);
+                            }
                         }
                         
                         outputDiv.appendChild(message);

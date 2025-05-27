@@ -186,3 +186,19 @@ def run_icarus_verilog(verilog_file: str, testbench_file: str) -> str:
             f.write(output_json)
             
         return output_json
+
+@tool
+def save_output_tool(response: str) -> str:
+    """
+    Saves the raw output to a file during task execution.
+    
+    Args:
+        response: The response or partial result to save
+        
+    Returns:
+        The same response (passthrough)
+    """
+    # Save the raw output to a file
+    with open("pre_feedback_output.txt", "w") as f:
+        f.write(response)
+    return response

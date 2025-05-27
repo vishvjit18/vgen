@@ -1,54 +1,105 @@
-# Vgen Crew
+# VGen CrewAI API
 
-Welcome to the Vgen Crew project, powered by [crewAI](https://crewai.com). This template is designed to help you set up a multi-agent AI system with ease, leveraging the powerful and flexible framework provided by crewAI. Our goal is to enable your agents to collaborate effectively on complex tasks, maximizing their collective intelligence and capabilities.
+This project provides a FastAPI application for streaming responses from CrewAI runs.
 
 ## Installation
 
-Ensure you have Python >=3.10 <3.13 installed on your system. This project uses [UV](https://docs.astral.sh/uv/) for dependency management and package handling, offering a seamless setup and execution experience.
-
-First, if you haven't already, install uv:
+1. Install the required dependencies:
 
 ```bash
-pip install uv
+pip install -r requirements.txt
 ```
 
-Next, navigate to your project directory and install the dependencies:
-
-(Optional) Lock the dependencies and install them by using the CLI command:
-```bash
-crewai install
-```
-### Customizing
-
-**Add your `OPENAI_API_KEY` into the `.env` file**
-
-- Modify `src/vgen/config/agents.yaml` to define your agents
-- Modify `src/vgen/config/tasks.yaml` to define your tasks
-- Modify `src/vgen/crew.py` to add your own logic, tools and specific args
-- Modify `src/vgen/main.py` to add custom inputs for your agents and tasks
-
-## Running the Project
-
-To kickstart your crew of AI agents and begin task execution, run this from the root folder of your project:
+2. Make sure you have Icarus Verilog installed:
 
 ```bash
-$ crewai run
+sudo apt-get install iverilog
 ```
 
-This command initializes the VGen Crew, assembling the agents and assigning them tasks as defined in your configuration.
+3. Set up your environment variables in a `.env` file:
 
-This example, unmodified, will run the create a `report.md` file with the output of a research on LLMs in the root folder.
+```
+GEMINI_API_KEY=your_gemini_api_key_here
+```
 
-## Understanding Your Crew
+## Running the API
 
-The VGen Crew is composed of multiple AI agents, each with unique roles, goals, and tools. These agents collaborate on a series of tasks, defined in `config/tasks.yaml`, leveraging their collective skills to achieve complex objectives. The `config/agents.yaml` file outlines the capabilities and configurations of each agent in your crew.
+Run the FastAPI application with:
 
-## Support
+```bash
+python -m vgen.run_api
+```
 
-For support, questions, or feedback regarding the Vgen Crew or crewAI.
-- Visit our [documentation](https://docs.crewai.com)
-- Reach out to us through our [GitHub repository](https://github.com/joaomdmoura/crewai)
-- [Join our Discord](https://discord.com/invite/X4JWnZnxPb)
-- [Chat with our docs](https://chatg.pt/DWjSBZn)
+This will start the server on http://localhost:8000.
 
-Let's create wonders together with the power and simplicity of crewAI.
+## API Endpoints
+
+- `GET /`: HTML interface for interacting with the API
+- `POST /run`: Create a new run
+  - Request body:
+    ```json
+    {
+      "problem": "Your Verilog problem statement here",
+      "run_type": "full" // Options: full, planning, subtasks, merging, iverilog
+    }
+    ```
+  - Response:
+    ```json
+    {
+      "run_id": "run_YYYYMMDD_HHMMSS",
+      "status": "starting",
+      "message": "Run run_YYYYMMDD_HHMMSS started"
+    }
+    ```
+
+- `GET /run/{run_id}`: Get the status of a specific run
+- `GET /run/{run_id}/stream`: Stream updates from a specific run (SSE)
+- `GET /runs`: List all runs
+
+## Web Interface
+
+The API includes a web interface for creating and monitoring runs. Access it by opening http://localhost:8000 in your browser.
+
+## Example Usage
+
+### Using the API directly
+
+```python
+import requests
+import json
+
+# Start a new run
+response = requests.post(
+    "http://localhost:8000/run",
+    json={
+        "problem": "Please act as a professional Verilog designer...",
+        "run_type": "full"
+    }
+)
+
+run_id = response.json()["run_id"]
+print(f"Run started with ID: {run_id}")
+
+# Get status updates
+status_response = requests.get(f"http://localhost:8000/run/{run_id}")
+print(json.dumps(status_response.json(), indent=2))
+```
+
+### Streaming updates
+
+To stream updates, you can use Server-Sent Events (SSE) in JavaScript:
+
+```javascript
+const eventSource = new EventSource(`http://localhost:8000/run/${runId}/stream`);
+
+eventSource.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    console.log(data);
+};
+```
+
+## Notes
+
+- The CrewAI runs can take several minutes to complete
+- The API supports different run types for different parts of the process
+- All output is streamed in real-time

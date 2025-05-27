@@ -5,7 +5,7 @@ import yaml
 import os
 import json
 from vgen.config import clean_verilog_file, Target_Problem  # Add this import at the top
-from vgen.tools.custom_tool import run_icarus_verilog
+from vgen.tools.custom_tool import run_icarus_verilog, save_output_tool
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_openai import ChatOpenAI
 
@@ -15,6 +15,13 @@ def get_gemini_pro_crew():
         api_key=os.getenv("GEMINI_API_KEY"),
         model="gemini/gemini-2.0-flash",
     )
+
+def get_gemini_flash_crew():
+    return LLM(
+        api_key=os.getenv("GOOGLE_API_KEY"),
+        model="gemini/gemini-2.0-flash",
+    )
+
 
 llm = ChatLiteLLM(model="azure/o3-mini", temperature=0.7)
 
@@ -46,6 +53,7 @@ class Vgen():
             config=self.agents_config['planner'],
             verbose=True,
             llm=get_gemini_pro_crew(),
+            tools=[save_output_tool],
         )
     
     @crew
@@ -69,7 +77,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['verilog_agent'],
             verbose=True,
-            llm=get_gemini_pro_crew()
+            llm=get_gemini_flash_crew()
         )
     
     
@@ -161,7 +169,7 @@ class Vgen():
                 description=task_template['description'].format(content=sub['content'], source=sub['source']),
                 expected_output=task_template['expected_output'],
                 agent=agent,
-                human_input=True,
+                human_input=False,
                 output_file=f"subtask_{i+1}.v"  # Save each subtask output to a file
             )
             for i, sub in enumerate(subtasks)
@@ -267,7 +275,8 @@ class Vgen():
         return Agent(
             config=self.agents_config['verilog_merger'],
             verbose=True,
-            llm=get_gemini_pro_crew()
+            llm=get_gemini_pro_crew(),
+            tools=[save_output_tool]
         )
     
     @task
@@ -326,7 +335,7 @@ class Vgen():
             config=self.agents_config['iverilog_agent'],
             tools=[run_icarus_verilog],
             verbose=True,
-            llm=get_gemini_pro_crew()
+            llm=get_gemini_flash_crew()
         )
         
     @crew
