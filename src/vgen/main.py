@@ -6,7 +6,7 @@ import os
 from dotenv import load_dotenv  # Add this import
 from vgen.utils.markdown_to_json import process_markdown_to_json, process_iverilog_report_to_json
 from vgen.crew import Vgen
-from vgen.config import Target_Problem
+from vgen.config import Target_Problem, get_target_problem
 import glob
 # Load the environment variables from .env file
 load_dotenv()
@@ -21,7 +21,7 @@ def run():
     and then execute the Verilog conversion crew.
     """
     inputs = {
-        'Target_Problem': Target_Problem
+        'Target_Problem': get_target_problem()
     }
 
     try:
@@ -261,7 +261,7 @@ def run():
         
             
                     else:
-                        print("I can’t crack it. Guess it's your turn to shine, Sherlock! Best of luck! 🥹🥹")
+                        print("I can't crack it. Guess it's your turn to shine, Sherlock! Best of luck! 🥹🥹")
 
         print("\n==== CLEANING UP SUBTASK FILES ====\n")
         subtask_files = glob.glob("subtask_*.v")
@@ -300,7 +300,18 @@ def test():
     """
  
     try:
-         Vgen().crew().train(n_iterations=int(sys.argv[1]), filename=sys.argv[2], )
+        subtask_crew = Vgen().subtask_crew()
+        subtask_outputs = subtask_crew.kickoff()
+        print(f"Completed subtasks: {subtask_outputs}")
+
+        # 3. Run the merging crew to combine all the modules
+        print("\n==== RUNNING MERGING CREW ====\n")
+        crew2 = Vgen().merging_crew()
+        merging_output = crew2.kickoff()
+        print(merging_output)
+        Vgen()._save_results([merging_output])
+
+
 
     except Exception as e:
         raise Exception(f"An error occurred while testing the crew: {e}")

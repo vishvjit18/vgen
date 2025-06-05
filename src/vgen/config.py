@@ -16,7 +16,8 @@ def clean_verilog_file(file_path, cleaned_file_path):
         print(f"Error cleaning {file_path}: {e}")
         exit(1)
 
-Target_Problem = """Please act as a professional verilog designer.
+# Default problem that will be used if no custom problem is provided
+DEFAULT_PROBLEM = """Please act as a professional verilog designer.
 
 Implement a 16-bit divider module, the dividend is 16-bit and the divider is 8-bit in combinational logic. Extract the higher bits of the dividend, matching the bit width of the divisor. Compare these bits with the divisor: if the dividend bits are greater, set the quotient to 1, otherwise set it to 0, and use the difference as the remainder. Concatenate the remainder with the highest remaining 1-bit of the dividend, and repeat the process until all dividend bits are processed.
 
@@ -39,3 +40,18 @@ The second always block is also a combinational block triggered by any change in
 Give me the complete code.
  
  """
+
+# Current target problem - can be set dynamically
+_current_problem = DEFAULT_PROBLEM
+
+def set_target_problem(problem):
+    """Set a new target problem"""
+    global _current_problem
+    _current_problem = problem
+
+def get_target_problem():
+    """Get the current target problem"""
+    return _current_problem
+
+# For backward compatibility - existing code can import Target_Problem directly
+Target_Problem = DEFAULT_PROBLEM

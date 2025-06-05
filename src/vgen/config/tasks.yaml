@@ -45,6 +45,7 @@ verilog_merging:
     - Consistent signal naming
     - Correct module hierarchy
     - Elimination of duplicate code
+    - Avoid creating testbench code
   expected_output: A complete Verilog module file with proper syntax
 
 # testbench_generation:

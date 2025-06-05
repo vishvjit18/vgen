@@ -31,7 +31,8 @@ def run_icarus_verilog(verilog_file: str, testbench_file: str) -> str:
         with open(verilog_file, 'r') as f:
             file_contents["design"] = {
                 "file": verilog_file,
-                "content": f.read()
+                "content": f.read(),
+                "suggesstions": ""  # Initialize with empty suggestions, note double 's' to match tasks.yaml
             }
     except Exception as e:
         result = {
@@ -55,7 +56,8 @@ def run_icarus_verilog(verilog_file: str, testbench_file: str) -> str:
         with open(testbench_file, 'r') as f:
             file_contents["testbench"] = {
                 "file": testbench_file,
-                "content": f.read()
+                "content": f.read(),
+                "suggesstions": ""  # Initialize with empty suggestions, note double 's' to match tasks.yaml
             }
     except Exception as e:
         result = {
@@ -187,18 +189,30 @@ def run_icarus_verilog(verilog_file: str, testbench_file: str) -> str:
             
         return output_json
 
+# Internal tracker to keep per-agent usage state
+_agent_usage_tracker = {}
+
 @tool
-def save_output_tool(response: str) -> str:
+def save_output_tool(response: str, agent_name: str = "default-agent") -> str:
     """
     Saves the raw output to a file during task execution.
-    
+    This tool can only be used once per agent.
+
     Args:
         response: The response or partial result to save
-        
+        agent_name: The name or ID of the agent (must be passed explicitly)
+
     Returns:
-        The same response (passthrough)
+        The same response, or a warning if already used by the agent.
     """
-    # Save the raw output to a file
-    with open("pre_feedback_output.txt", "w") as f:
+    if _agent_usage_tracker.get(agent_name, False):
+        return f"⚠️ This tool can only be used once per agent. Agent '{agent_name}' has already used it."
+
+    # Mark as used
+    _agent_usage_tracker[agent_name] = True
+
+    # Save to file
+    with open("pre_feedback_output.txt", "w", encoding="utf-8") as f:
         f.write(response)
+
     return response

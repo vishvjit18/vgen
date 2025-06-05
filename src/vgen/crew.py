@@ -4,7 +4,7 @@ from pathlib import Path
 import yaml
 import os
 import json
-from vgen.config import clean_verilog_file, Target_Problem  # Add this import at the top
+from vgen.config import clean_verilog_file, Target_Problem, get_target_problem  # Add get_target_problem
 from vgen.tools.custom_tool import run_icarus_verilog, save_output_tool
 from langchain_community.chat_models import ChatLiteLLM
 from langchain_openai import ChatOpenAI
@@ -52,7 +52,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['planner'],
             verbose=True,
-            llm=get_gemini_pro_crew(),
+            llm=llm,
             tools=[save_output_tool],
         )
     
@@ -77,7 +77,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['verilog_agent'],
             verbose=True,
-            llm=get_gemini_flash_crew()
+            llm=llm
         )
     
     
@@ -232,7 +232,7 @@ class Vgen():
         return Agent(
             config=self.agents_config['testbench_fixer_agent'],
             verbose=True,
-            llm=get_gemini_pro_crew()
+            llm=llm
         )
 
     # @task
@@ -275,14 +275,12 @@ class Vgen():
         return Agent(
             config=self.agents_config['verilog_merger'],
             verbose=True,
-            llm=get_gemini_pro_crew(),
+            llm=llm,
             tools=[save_output_tool]
         )
     
     @task
     def merging_task(self) -> Task:
-        # Get the Target_Problem from the same hardcoded value as in main.py
-        target_problem = Target_Problem
 
         # Collect all subtask outputs
         subtask_code = self.collect_subtask_outputs()
@@ -299,8 +297,8 @@ class Vgen():
         
         # Interpolate the Target_Problem and subtask code into the task
         task.interpolate_inputs_and_add_conversation_history({
-            "Target_Problem": target_problem,
-            "context": subtask_code  # Pass collected code as context
+            "context": subtask_code,  # Pass collected code as context
+            "Target_Problem": get_target_problem()
         })
         
         return task
@@ -405,7 +403,16 @@ class Vgen():
             with open("iverilog_report.json", "r") as f:
                 data = json.load(f)
             design_file = data.get("files", {}).get("design", {}).get("content", "")
-            suggestions = data.get("files", {}).get("design", {}).get("suggestions", "")
+            
+            # Try to get suggestions with both possible spellings
+            suggestions = data.get("files", {}).get("design", {}).get("suggesstions", "")
+            if not suggestions:  # If empty, try alternate spelling
+                suggestions = data.get("files", {}).get("design", {}).get("suggestions", "")
+            
+            # Debug output
+            print(f"Design content length: {len(design_file)}")
+            print(f"Suggestions content: {suggestions[:100]}...")  # Print first 100 chars
+            
         except Exception as e:
             print(f"Error loading iverilog_report.json: {e}")
             design_file = ""
@@ -418,8 +425,12 @@ class Vgen():
             config=task_config,
             agent=self.design_fixer_agent(),
             output_file="fixed_design.sv",
+            human_input=True,
             context=[]
         )
+        
+        # Add debug info to help trace the issue
+        print(f"Passing design file ({len(design_file)} chars) and suggestions ({len(suggestions)} chars) to agent")
         
         task.interpolate_inputs_and_add_conversation_history({
             "design_file": design_file,
@@ -431,7 +442,7 @@ class Vgen():
     def design_fixer_agent(self) -> Agent:
         return Agent(
             config=self.agents_config['design_fixer_agent'],
-            llm=get_gemini_pro_crew(),
+            llm=llm,
             tools=[],
             verbose=True
         )

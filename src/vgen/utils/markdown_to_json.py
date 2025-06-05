@@ -64,32 +64,25 @@ def process_iverilog_report_to_json(input_md_path, output_json_path):
         # The iverilog report is enclosed in ```json and ``` markers
         json_str = re.sub(r'^```json\s*|```\s*$', '', markdown_content, flags=re.DOTALL).strip()
         
-        # Parse the JSON into a Python dictionary
-        data = json.loads(json_str)
+        # Debug output for troubleshooting
+        print(f"Extracted JSON string (first 200 chars): {json_str[:200]}...")
         
-        # No need to clean Sub-Task entries as they don't exist in this format
-        # Instead, we'll ensure the suggestions field has proper formatting
-        
-        # Check if files and testbench exist (defensive programming)
-        if 'files' in data:
-            if 'testbench' in data['files'] and 'suggesstions' in data['files']['testbench']:
-                # Fix typo in key name if present (suggesstions -> suggestions)
-                suggestions = data['files']['testbench'].pop('suggesstions', None)
-                if suggestions is not None:
-                    data['files']['testbench']['suggestions'] = suggestions
+        try:
+            # Parse the JSON into a Python dictionary
+            data = json.loads(json_str)
             
-            if 'design' in data['files'] and 'suggesstions' in data['files']['design']:
-                # Fix typo in key name if present (suggesstions -> suggestions)
-                suggestions = data['files']['design'].pop('suggesstions', None)
-                if suggestions is not None:
-                    data['files']['design']['suggestions'] = suggestions
-        
-        # Write the cleaned JSON to output file
-        with open(output_json_path, 'w') as f:
-            json.dump(data, f, indent=2)
-            
-        print(f"Successfully processed {input_md_path} to {output_json_path}")
-        return True
+            # Write the cleaned JSON to output file (keep original keys)
+            with open(output_json_path, 'w') as f:
+                json.dump(data, f, indent=2)
+                
+            print(f"Successfully processed {input_md_path} to {output_json_path}")
+            return True
+        except json.JSONDecodeError as je:
+            # Special handling for JSON parsing errors
+            print(f"JSON parsing error: {je}")
+            print(f"Error at position {je.pos}, line: {je.lineno}, column: {je.colno}")
+            print(f"Context: {json_str[max(0, je.pos-50):je.pos]}>>HERE<<{json_str[je.pos:je.pos+50]}")
+            return False
         
     except Exception as e:
         print(f"Error processing files: {e}")

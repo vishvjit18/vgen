@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 
 from crewai import Agent, Crew, Process, Task
 from vgen.crew import Vgen
-from vgen.config import Target_Problem
+from vgen.config import Target_Problem, set_target_problem, get_target_problem
 from vgen.utils.markdown_to_json import process_markdown_to_json, process_iverilog_report_to_json
 
 # Configure logging
@@ -129,6 +129,10 @@ async def root():
 async def create_run(request: CrewRunRequest, background_tasks: BackgroundTasks):
     """Create a new crew run with the specified problem"""
     run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    # Update target problem if different from current one
+    if request.problem != get_target_problem():
+        set_target_problem(request.problem)
     
     # Store run info
     active_runs[run_id] = {
