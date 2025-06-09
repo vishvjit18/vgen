@@ -2,19 +2,61 @@ def clean_verilog_file(file_path, cleaned_file_path):
     """Remove unnecessary prefixes or non-Verilog text from the file."""
     try:
         with open(file_path, 'r') as f:
-            lines = f.readlines()
+            content = f.read()
 
         # Filter out lines that contain Markdown code block indicators or other non-Verilog text
+        lines = content.splitlines()
         cleaned_lines = [line for line in lines if not line.strip().startswith('```')]
+        
+        # Join lines back and clean up stray backticks
+        cleaned_content = '\n'.join(cleaned_lines)
+        
+        # Remove stray backticks except for `timescale
+        cleaned_content = clean_verilog_backticks(cleaned_content)
 
         # Write the cleaned content to a new file
         with open(cleaned_file_path, 'w') as f:
-            f.writelines(cleaned_lines)
+            f.write(cleaned_content)
 
         print(f"Cleaned {file_path} successfully. Cleaned file saved as {cleaned_file_path}.")
     except Exception as e:
         print(f"Error cleaning {file_path}: {e}")
         exit(1)
+
+def clean_verilog_backticks(content):
+    """Remove stray backticks from Verilog content except for `timescale."""
+    if not isinstance(content, str):
+        return content
+    
+    # Split content into lines for processing
+    lines = content.split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        cleaned_line = line
+        
+        # Check if this line contains `timescale - if so, preserve it
+        if '`timescale' in line:
+            # Keep `timescale as is, but clean other backticks in the same line
+            timescale_parts = line.split('`timescale')
+            if len(timescale_parts) >= 2:
+                # Clean backticks before `timescale
+                before_timescale = timescale_parts[0].replace('`', '')
+                # Keep `timescale and everything after it, but clean other backticks after
+                after_timescale = '`timescale' + timescale_parts[1]
+                # Remove any other backticks after the timescale directive (but not the timescale backtick itself)
+                after_parts = after_timescale.split(' ', 1)
+                if len(after_parts) > 1:
+                    # Keep the `timescale directive, clean the rest
+                    after_timescale = after_parts[0] + ' ' + after_parts[1].replace('`', '')
+                cleaned_line = before_timescale + after_timescale
+        else:
+            # For lines without `timescale, remove all backticks
+            cleaned_line = line.replace('`', '')
+        
+        cleaned_lines.append(cleaned_line)
+    
+    return '\n'.join(cleaned_lines)
 
 # Default problem that will be used if no custom problem is provided
 DEFAULT_PROBLEM = """Please act as a professional verilog designer.
