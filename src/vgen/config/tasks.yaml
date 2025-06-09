@@ -3,7 +3,7 @@ high_level_planning_task:
    Based on the {Target_Problem} think what you know about this, set up a sequential implementation plans. Each subtask should focus on implement only one signal at a time 
    and don't create entire verilog code.
    Rules:
-    Make sure the task plans satisfy the following rules! Do not make the plans that violate the following rules!!!
+    Make sure the task plans satisfy the following rules!
     Make a plan to define the module with its input and output first.
     Do not plan the implementation of logic or signal from the input ports.
     There is test bench to test the functional correctness. Do not plan generating testbench to test the generated verilog code.
@@ -16,8 +16,7 @@ high_level_planning_task:
    The expected output should be a JSON object named Sub-Task containing a list of tasks. Each task should be represented as a JSON object with the following fields:
    - id: A unique identifier for the task and indicates the sequential order.
    - content: task discription.
-   - source: The source code or context related to the task.
-    hu
+   - source: Code snippets in verilog language related to the task.
   agent: planner
 
 verilog_conversion:
@@ -48,22 +47,22 @@ verilog_merging:
     - Avoid creating testbench code
   expected_output: A complete Verilog module file with proper syntax
 
-# testbench_generation:
-#   description: >
-#     Generate a complete Verilog testbench for the following design:
-#     Target design: {Target_Problem}
+testbench_generation:
+  description: >
+    Generate a complete Verilog testbench for the following design:
+    Target design: {Target_Problem}
     
-#     Port details from specification: {first_subtask}
+    Port details from specification: {first_subtask}
     
-#     The testbench should:
-#     1. Must follow Verilog coding standards with correct syntax and supported by Icarus Verilog
-#     2. Generate clock and reset signals if needed
-#     3. Apply appropriate input stimuli
-#     4. Do not include the module design code itself in the testbench
-#     5. It should end the simulation with $finish
-#     6. Don't use system verilog standards
-#   expected_output: A complete Verilog testbench file without any comments inside or after the code block.
-#   agent: testbench_agent
+    The testbench should:
+    1. Must follow Verilog coding standards with correct syntax and supported by Icarus Verilog
+    2. Generate clock and reset signals if needed
+    3. Apply appropriate input stimuli
+    4. Do not include the module design code itself in the testbench
+    5. It should end the simulation with $finish
+    6. Don't use system verilog standards
+  expected_output: A complete Verilog testbench file without any comments inside or after the code block.
+  agent: testbench_agent
 
 iverilog_task:
   description: >
@@ -75,7 +74,7 @@ iverilog_task:
     3. If simulation is successful, analyze the output for correctness
     4. Do not modify the design.sv and testbench.sv files directly, only provide suggestions
   expected_output: >
-    Regardless of tool output expected output should be a JSON object same as the input JSON object just add one suggesions key inside files/testbench/ or files/design/ containing specific suggestions for 
+    Regardless of tool output expected output should be a JSON object same as the input JSON object just add one suggesions key inside files/design/ or files/testbench/ containing specific suggestions for 
     fixing compilation error if status is success leave suggesions empty for both. 
     The output should help downstream agents understand what went wrong and how to fix it and do not add any additional information above or below the JSON object.
     The output should be a JSON object with the following fields:
@@ -93,7 +92,8 @@ iverilog_task:
         },
         "testbench": {
           "file": "",
-          "content": ""
+          "content": "",
+          "suggesstions": ""
         }
       }
     }

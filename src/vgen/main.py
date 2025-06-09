@@ -52,14 +52,13 @@ def run():
         print(merging_output)
         Vgen()._save_results([merging_output])
         
-        # # 4. Generate testbench
-        # print("\n==== GENERATING TESTBENCH ====\n")
-        # testbench_crew = Vgen().testbench_crew()
-        # testbench_output = testbench_crew.kickoff()
-        # print(testbench_output)
-        # # Save the testbench output using the new method
-        # Vgen()._save_testbench_results([testbench_output])
-        # print("\n==== TESTBENCH GENERATION COMPLETE ====\n")
+        # 4. Generate testbench
+        print("\n==== GENERATING TESTBENCH ====\n")
+        testbench_crew = Vgen().testbench_crew()
+        testbench_output = testbench_crew.kickoff()
+        print(testbench_output)
+        Vgen()._save_testbench_results(testbench_output)
+        print("\n==== TESTBENCH GENERATION COMPLETE ====\n")
 
         # 5. Run Icarus Verilog simulation
         print("\n==== RUNNING ICARUS VERILOG SIMULATION - 1 ====\n")
@@ -298,19 +297,27 @@ def test():
     """
     Test the crew execution and returns the results.
     """
- 
+
     try:
-        subtask_crew = Vgen().subtask_crew()
-        subtask_outputs = subtask_crew.kickoff()
-        print(f"Completed subtasks: {subtask_outputs}")
-
-        # 3. Run the merging crew to combine all the modules
-        print("\n==== RUNNING MERGING CREW ====\n")
-        crew2 = Vgen().merging_crew()
-        merging_output = crew2.kickoff()
-        print(merging_output)
-        Vgen()._save_results([merging_output])
-
+        # 4. Generate testbench
+        print("\n==== GENERATING TESTBENCH ====\n")
+        testbench_crew = Vgen().testbench_crew()
+        testbench_output = testbench_crew.kickoff()
+        print(testbench_output)
+        Vgen()._save_testbench_results(testbench_output)
+        print("\n==== TESTBENCH GENERATION COMPLETE ====\n")
+        # 5. Run Icarus Verilog simulation
+        print("\n==== RUNNING ICARUS VERILOG SIMULATION - 1 ====\n")
+        icarus_crew = Vgen().icarus_crew()
+        simulation_output = icarus_crew.kickoff()
+        print(simulation_output)
+        print("\n==== SIMULATION COMPLETE ====\n")
+        input_md = 'iverilog_report.md'
+        output_json = 'iverilog_report.json'
+        print("\n==== PROCESSING MARKDOWN TO JSON ====\n")
+        success = process_iverilog_report_to_json(input_md, output_json)
+        if not success:
+            raise Exception("Failed to process markdown output")
 
 
     except Exception as e:
