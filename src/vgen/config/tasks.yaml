@@ -111,15 +111,15 @@ fix_design_task:
     A corrected version of design.sv.
   agent: design_fixer_agent
 
-# fix_testbench_task:
-#   description: >
-#     You are provided with:
-#     - Suggestions for fixing: {suggestions}
-#     - The previous testbench.sv file: {testbench_file}
+fix_testbench_task:
+  description: >
+    You are provided with:
+    - Suggestions for fixing: {suggestions}
+    - The previous testbench.sv file: {testbench_file}
     
 
-#     Modify the testbench logic to resolve the issue. Return the fixed version of testbench.sv.
+    Modify the testbench.sv file to resolve the issue. Return the fixed version of testbench.sv file.
 
-#   expected_output: >
-#     A corrected version of testbench.sv.
-#   agent: testbench_fixer_agent
+  expected_output: >
+    A corrected version of testbench.sv.
+  agent: testbench_fixer_agent

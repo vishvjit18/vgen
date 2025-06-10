@@ -47,6 +47,7 @@ class Vgen():
     agents_config = 'config/agents.yaml'
     tasks_config = 'config/tasks.yaml'
 
+    # High-level planner agent
     @agent
     def planner(self) -> Agent:
         return Agent(
@@ -164,7 +165,7 @@ class Vgen():
         
         return None
 
-    # Modified task creation to save individual output files
+    # Verilog subtask agent
     @agent
     def verilog_agent(self) -> Agent:
         return Agent(
@@ -189,7 +190,6 @@ class Vgen():
 
         with open(tasks_path) as f:
             return yaml.safe_load(f)['verilog_conversion']  # Access 'verilog_conversion' directly
-    # Updated method to clean and save results
     def _save_results(self, results):
         # Extract Verilog code from results
         verilog_code = None
@@ -256,7 +256,8 @@ class Vgen():
             },
             output_log_file=os.path.join(".crew", "logs", "subtasks.json"),
         )
-
+    
+    # Verilog merging agent
     @agent
     def merger_agent(self) -> Agent:
         return Agent(
@@ -321,6 +322,7 @@ class Vgen():
             output_log_file=os.path.join(".crew", "logs", "merging.json"),
         )
     
+    # Testbench generation agent
     @agent
     def testbench_agent(self) -> Agent:
         return Agent(
@@ -328,7 +330,6 @@ class Vgen():
             verbose=True,
             llm=llm
         )
-    # Method to save testbench results
     def _save_testbench_results(self, results):
         # Extract Verilog code from results
         verilog_code = None
@@ -408,15 +409,8 @@ class Vgen():
             },
             output_log_file=os.path.join(".crew", "logs", "testbench.json"),
         )
-
-    # @agent
-    # def testbench_fixer_agent(self) -> Agent:
-    #     return Agent(
-    #         config=self.agents_config['testbench_fixer_agent'],
-    #         verbose=True,
-    #         llm=llm
-    #     )
     
+    # Icarus Verilog simulation agent
     @agent
     def iverilog_agent(self) -> Agent:
         return Agent(
@@ -448,52 +442,8 @@ class Vgen():
             },
             output_log_file=os.path.join(".crew", "logs", "iverilog_simulation.json"),
         )
-        
-    # @task
-    # def fix_testbench_task(self) -> Task:
-    #     try:
-    #         with open("iverilog_report.json", "r") as f:
-    #             data = json.load(f)
-    #         testbench_file = data.get("files", {}).get("testbench", {}).get("content", "")
-    #         suggestions = data.get("files", {}).get("testbench", {}).get("suggestions", "")
-    #     except Exception as e:
-    #         print(f"Error loading iverilog_report.json: {e}")
-    #         testbench_file = ""
-    #         suggestions = ""
-        
-    #     task_config = self.tasks_config['fix_testbench_task'].copy()
-
-    #     task= Task(
-    #         name="fix_testbench_task",
-    #         config=task_config,
-    #         agent=self.testbench_fixer_agent(),
-    #         output_file="fixed_testbench.sv",
-    #         context=[]
-    #     )
-        
-    #     task.interpolate_inputs_and_add_conversation_history({
-    #         "testbench_file": testbench_file,
-    #         "suggestions": suggestions
-    #     })
-        
-    #     return task
     
-    # @crew
-    # def testbench_fixer_crew(self) -> Crew:
-    #     """Testbench Fixer crew"""
-    #     return Crew(
-    #         agents=[self.testbench_fixer_agent()],
-    #         tasks=[self.fix_testbench_task()],
-    #         process=Process.sequential,
-    #         verbose=True,
-    #         memory=True,
-    #         embedder={
-    #             "provider": "ollama",
-    #             "config": {"model": "all-minilm"}
-    #         },
-    #         output_log_file=os.path.join(".crew", "logs", "testbench.json"),
-    #     )
-
+    # Verilog design fixer agent
     @agent
     def design_fixer_agent(self) -> Agent:
         return Agent(
@@ -595,3 +545,63 @@ class Vgen():
             },
             output_log_file=os.path.join(".crew", "logs", "iverilog_simulation.json"),
         ) 
+
+    # Testbench fixer agent
+    @agent
+    def testbench_fixer_agent(self) -> Agent:
+        return Agent(
+            config=self.agents_config['testbench_fixer_agent'],
+            verbose=True,
+            llm=llm
+        )
+    @task
+    def fix_testbench_task(self) -> Task:
+        try:
+            with open("iverilog_report.json", "r") as f:
+                data = json.load(f)
+            testbench_file = data.get("files", {}).get("testbench", {}).get("content", "")
+            
+            # Try to get suggestions with both possible spellings
+            suggestions = data.get("files", {}).get("testbench", {}).get("suggesstions", "")
+            if not suggestions:  # If empty, try alternate spelling
+                suggestions = data.get("files", {}).get("testbench", {}).get("suggestions", "")
+            
+        except Exception as e:
+            print(f"Error loading iverilog_report.json: {e}")
+            testbench_file = ""
+            suggestions = ""
+        
+        task_config = self.tasks_config['fix_testbench_task'].copy()
+
+        task= Task(
+            name="fix_testbench_task",
+            config=task_config,
+            agent=self.testbench_fixer_agent(),
+            output_file="fixed_testbench.sv",
+            context=[]
+        )
+        # Add debug info to help trace the issue
+        print(f"Passing testbench file ({len(testbench_file)} chars) and suggestions ({len(suggestions)} chars) to agent")
+        
+        task.interpolate_inputs_and_add_conversation_history({
+            "testbench_file": testbench_file,
+            "suggestions": suggestions
+        })
+        
+        return task
+    
+    @crew
+    def testbench_fixer_crew(self) -> Crew:
+        """Testbench Fixer crew"""
+        return Crew(
+            agents=[self.testbench_fixer_agent()],
+            tasks=[self.fix_testbench_task()],
+            process=Process.sequential,
+            verbose=True,
+            memory=True,
+            embedder={
+                "provider": "ollama",
+                "config": {"model": "all-minilm"}
+            },
+            output_log_file=os.path.join(".crew", "logs", "testbench.json"),
+        )

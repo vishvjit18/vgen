@@ -42,8 +42,8 @@ testbench_agent:
   allow_delegation: false
 
 testbench_fixer_agent:
-  role: Testbench Engineer
-  goal: Generate comprehensive Verilog testbenches for digital designs
+  role: Testbench Fixer
+  goal: Analyze compile/simulation errors in testbench.sv and fix them
   backstory: >
     You are an experienced verification engineer specializing in Verilog testbench development. 
     You excel at creating thorough, self-checking testbenches that verify designs against their specifications.
@@ -66,10 +66,3 @@ design_fixer_agent:
   backstory: >
     You are a seasoned hardware designer. You review logs and
     update the RTL to resolve syntax or functional issues.
-
-# testbench_fixer_agent:
-#   role: Testbench Fixer
-#   goal: Analyze simulation failures in testbench.sv and fix stimulus or checks
-#   backstory: >
-#     You are a testbench specialist. You maintain testbench.sv and ensure
-#     the design is tested correctly.
