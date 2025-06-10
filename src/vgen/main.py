@@ -61,206 +61,121 @@ def run():
         print("\n==== TESTBENCH GENERATION COMPLETE ====\n")
 
         # 5. Run Icarus Verilog simulation
-        print("\n==== RUNNING ICARUS VERILOG SIMULATION - 1 ====\n")
-        icarus_crew = Vgen().icarus_crew()
-        simulation_output = icarus_crew.kickoff()
-        print(simulation_output)
-        print("\n==== SIMULATION COMPLETE ====\n")
-        input_md = 'iverilog_report.md'
-        output_json = 'iverilog_report.json'
-        print("\n==== PROCESSING MARKDOWN TO JSON ====\n")
-        success = process_iverilog_report_to_json(input_md, output_json)
-        if not success:
-            raise Exception("Failed to process markdown output")
-        
-        # 6 Run the testbench fixer crew
-        # print("\n==== RUNNING TESTBENCH FIXER CREW ====\n")
-        # testbench_fixer_crew = Vgen().testbench_fixer_crew()
-        # testbench_fixer_output = testbench_fixer_crew.kickoff()
-        # print(testbench_fixer_output)
-        
-        # Save the fixed testbench using the clean_verilog_file function
-        # Vgen()._save_fixed_testbench_results([testbench_fixer_output])
-        # print("\n==== FIXED TESTBENCH SAVED ====\n")
-
-        # CONDITIONAL CHECK
-        try:
-            with open('iverilog_report.json', 'r') as f:
-                iverilog_report = json.load(f)
-            design_suggestions_empty = iverilog_report.get('files', {}).get('design', {}).get('suggestions', '') == ''
-        except Exception as e:
-            print(f"Error reading iverilog_report.json: {e}")
-            design_suggestions_empty = False  # Default to original behavior if file can't be read
+        # Repeat the fixer logic 4 times
+        for iteration in range(1, 5):
+            print(f"\n==== ITERATION {iteration} ====\n")
             
-        if design_suggestions_empty:
-            design_file = "design.sv"
-            try:
-        # Read and display design file content
-                if os.path.exists(design_file):
-                    with open(design_file, 'r') as f:
-                        design_content = f.read()
-                    print("\n=== Final Design Content Original===")
-                    print(design_content)
-                else:
-                    print(f"Error: {design_file} not found")
-            except Exception as e:
-                print(f"Error reading results: {e}")
-    
-        
-        else:
-            print("Design has suggestions. Running DESIGN FIXER CREW...")
-            #Run the design fixer crew
-            print("\n==== RUNNING DESIGN FIXER CREW - 1 ====\n")
-            Design_fixer_crew = Vgen().Design_fixer_crew()
-            design_fixer_output = Design_fixer_crew.kickoff()
-            print(design_fixer_output)
-            # Save the fixed Design using the clean_verilog_file function
-            Vgen()._save_fixed_design_results([design_fixer_output])
-            print("\n==== FIXED DESIGN SAVED ====\n")
-
-            print("\n==== RUNNING ICARUS VERILOG SIMULATION - 2 ====\n")
+            # Run Icarus Verilog simulation
+            print(f"\n==== RUNNING ICARUS VERILOG SIMULATION - {iteration} ====\n")
             icarus_crew = Vgen().icarus_crew()
             simulation_output = icarus_crew.kickoff()
             print(simulation_output)
             print("\n==== SIMULATION COMPLETE ====\n")
             
+            # Process markdown to JSON
             input_md = 'iverilog_report.md'
             output_json = 'iverilog_report.json'
-
-            #10.0
             print("\n==== PROCESSING MARKDOWN TO JSON ====\n")
             success = process_iverilog_report_to_json(input_md, output_json)
             if not success:
                 raise Exception("Failed to process markdown output")
-
-                # CONDITIONAL CHECK
+            
+            # Check suggestions and decide which fixer crews to run
             try:
                 with open('iverilog_report.json', 'r') as f:
                     iverilog_report = json.load(f)
-                design_suggestions_empty = iverilog_report.get('files', {}).get('design', {}).get('suggestions', '') == ''
+                # Try both possible spellings of suggestions field  
+                design_suggestions = iverilog_report.get('files', {}).get('design', {}).get('suggesstions', '')
+                if not design_suggestions:  # If empty, try alternate spelling
+                    design_suggestions = iverilog_report.get('files', {}).get('design', {}).get('suggestions', '')
+                
+                testbench_suggestions = iverilog_report.get('files', {}).get('testbench', {}).get('suggesstions', '')
+                if not testbench_suggestions:  # If empty, try alternate spelling
+                    testbench_suggestions = iverilog_report.get('files', {}).get('testbench', {}).get('suggestions', '')
+                design_suggestions_empty = design_suggestions == ''
+                testbench_suggestions_empty = testbench_suggestions == ''
+                
+                # Debug prints
+                print(f"DEBUG - Iteration {iteration}:")
+                print(f"  Design suggestions: '{design_suggestions}'")
+                print(f"  Testbench suggestions: '{testbench_suggestions}'")
+                print(f"  Design suggestions empty: {design_suggestions_empty}")
+                print(f"  Testbench suggestions empty: {testbench_suggestions_empty}")
+                
             except Exception as e:
                 print(f"Error reading iverilog_report.json: {e}")
-                design_suggestions_empty = False  # Default to original behavior if file can't be read
-                
-            if design_suggestions_empty:
+                design_suggestions_empty = False
+                testbench_suggestions_empty = False
+            
+            print(f"DEBUG - Entering conditional check for iteration {iteration}")
+            
+            if design_suggestions_empty and testbench_suggestions_empty:
+                # Both design and testbench are clean
+                print(f"DEBUG - Both clean path taken for iteration {iteration}")
                 design_file = "design.sv"
                 try:
-            # Read and display design file content
                     if os.path.exists(design_file):
                         with open(design_file, 'r') as f:
                             design_content = f.read()
-                        print("\n=== Final Design Content FIXER CREW - 1 ===")
+                        print(f"\n=== Final Design Content - Iteration {iteration} - Both Clean ===")
                         print(design_content)
+                        break  # Exit the loop if both are clean
                     else:
                         print(f"Error: {design_file} not found")
                 except Exception as e:
                     print(f"Error reading results: {e}")
-        
             
             else:
-                print("Design has suggestions. Running DESIGN FIXER CREW...")
-                #Run the design fixer crew
-                print("\n==== RUNNING DESIGN FIXER CREW - 2 ====\n")
-                Design_fixer_crew = Vgen().Design_fixer_crew()
-                design_fixer_output = Design_fixer_crew.kickoff()
-                print(design_fixer_output)
-                # Save the fixed Design using the clean_verilog_file function
-                Vgen()._save_fixed_design_results([design_fixer_output])
-                print("\n==== FIXED DESIGN SAVED ====\n")
-
-                #icarus 3
-                print("\n==== RUNNING ICARUS VERILOG SIMULATION - 3 ====\n")
-                icarus_crew = Vgen().icarus_crew()
-                simulation_output = icarus_crew.kickoff()
-                print(simulation_output)
-                print("\n==== SIMULATION COMPLETE ====\n")
+                # Either one or both have suggestions - run appropriate fixer crews
+                print(f"DEBUG - Fixer path taken for iteration {iteration}")
+                crews_to_run = []
                 
-                input_md = 'iverilog_report.md'
-                output_json = 'iverilog_report.json'
-
-                #10.0
-                print("\n==== PROCESSING MARKDOWN TO JSON ====\n")
-                success = process_iverilog_report_to_json(input_md, output_json)
-                if not success:
-                    raise Exception("Failed to process markdown output")
-
-                # CONDITIONAL CHECK
-                try:
-                    with open('iverilog_report.json', 'r') as f:
-                        iverilog_report = json.load(f)
-                    design_suggestions_empty = iverilog_report.get('files', {}).get('design', {}).get('suggestions', '') == ''
-                except Exception as e:
-                    print(f"Error reading iverilog_report.json: {e}")
-                    design_suggestions_empty = False  # Default to original behavior if file can't be read
-                    
-                if design_suggestions_empty:
+                if not design_suggestions_empty:
+                    crews_to_run.append("design")
+                    print(f"Design has suggestions in iteration {iteration}")
+                
+                if not testbench_suggestions_empty:
+                    crews_to_run.append("testbench")
+                    print(f"Testbench has suggestions in iteration {iteration}")
+                
+                print(f"DEBUG - Crews to run: {crews_to_run}")
+                
+                # Run design fixer if needed
+                if "design" in crews_to_run:
+                    print(f"DEBUG - About to run design fixer crew for iteration {iteration}")
+                    print(f"\n==== RUNNING DESIGN FIXER CREW - Iteration {iteration} ====\n")
+                    design_fixer_crew = Vgen().Design_fixer_crew()
+                    design_fixer_output = design_fixer_crew.kickoff()
+                    print(design_fixer_output)
+                    Vgen()._save_fixed_design_results([design_fixer_output])
+                    print("\n==== FIXED DESIGN SAVED ====\n")
+                
+                # Run testbench fixer if needed
+                if "testbench" in crews_to_run:
+                    print(f"DEBUG - About to run testbench fixer crew for iteration {iteration}")
+                    print(f"\n==== RUNNING TESTBENCH FIXER CREW - Iteration {iteration} ====\n")
+                    # Uncomment when testbench fixer crew is available
+                    testbench_fixer_crew = Vgen().testbench_fixer_crew()
+                    testbench_fixer_output = testbench_fixer_crew.kickoff()
+                    print(testbench_fixer_output)
+                    Vgen()._save_testbench_results([testbench_fixer_output])
+                    print("Testbench fixer crew placeholder - implement when available")
+                    print("\n==== FIXED TESTBENCH SAVED ====\n")
+                
+                # If this is the last iteration and still have suggestions
+                if iteration == 4:
+                    print("Reached maximum iterations. Some suggestions may still remain.")
                     design_file = "design.sv"
                     try:
-                # Read and display design file content
                         if os.path.exists(design_file):
                             with open(design_file, 'r') as f:
                                 design_content = f.read()
-                            print("\n=== Final Design Content FIXER CREW - 2 ===")
+                            print(f"\n=== Final Design Content - Iteration {iteration} ===")
                             print(design_content)
                         else:
                             print(f"Error: {design_file} not found")
                     except Exception as e:
                         print(f"Error reading results: {e}")
-            
-                
-                else:
-                    print("Design has suggestions. Running DESIGN FIXER CREW...")
-                    #Run the design fixer crew
-                    print("\n==== RUNNING DESIGN FIXER CREW - 3 ====\n")
-                    Design_fixer_crew = Vgen().Design_fixer_crew()
-                    design_fixer_output = Design_fixer_crew.kickoff()
-                    print(design_fixer_output)
-                    # Save the fixed Design using the clean_verilog_file function
-                    Vgen()._save_fixed_design_results([design_fixer_output])
-                    print("\n==== FIXED DESIGN SAVED ====\n")
-
-                    #icarus 4
-                    print("\n==== RUNNING ICARUS VERILOG SIMULATION - 4 ====\n")
-                    icarus_crew = Vgen().icarus_crew()
-                    simulation_output = icarus_crew.kickoff()
-                    print(simulation_output)
-                    print("\n==== SIMULATION COMPLETE ====\n")
-                    
-                    input_md = 'iverilog_report.md'
-                    output_json = 'iverilog_report.json'
-
-                    #10.0
-                    print("\n==== PROCESSING MARKDOWN TO JSON ====\n")
-                    success = process_iverilog_report_to_json(input_md, output_json)
-                    if not success:
-                        raise Exception("Failed to process markdown output")
-
-                        # CONDITIONAL CHECK
-                    try:
-                        with open('iverilog_report.json', 'r') as f:
-                            iverilog_report = json.load(f)
-                        design_suggestions_empty = iverilog_report.get('files', {}).get('design', {}).get('suggestions', '') == ''
-                    except Exception as e:
-                        print(f"Error reading iverilog_report.json: {e}")
-                        design_suggestions_empty = False  # Default to original behavior if file can't be read
-                        
-                    if design_suggestions_empty:
-                        design_file = "design.sv"
-                        try:
-            # Read and display design file content
-                            if os.path.exists(design_file):
-                                with open(design_file, 'r') as f:
-                                    design_content = f.read()
-                                print("\n=== Final Design Content FIXER CREW - 3 ===")
-                                print(design_content)
-                            else:
-                                print(f"Error: {design_file} not found")
-                        except Exception as e:
-                            print(f"Error reading results: {e}")
-        
-            
-                    else:
-                        print("I can't crack it. Guess it's your turn to shine, Sherlock! Best of luck! 🥹🥹")
 
         print("\n==== CLEANING UP SUBTASK FILES ====\n")
         subtask_files = glob.glob("subtask_*.v")
@@ -295,7 +210,7 @@ def replay():
 
 def test():
     """
-    Test the crew execution and returns the results.
+    Test the crew execution with 3 repetitions of suggestion-based fixer logic.
     """
 
     try:
