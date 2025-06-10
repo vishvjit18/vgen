@@ -373,6 +373,21 @@ async def run_crew(run_id: str, problem_statement: str, run_type: str):
                     if run_type == "merging":
                         active_runs[run_id]["status"] = "completed"
                         return
+                    
+                if run_type in ["full", "testbench"]:
+                    # 4. Run the testbench crew
+                    update_status("testbench", "Running testbench crew")
+                    testbench_crew = vgen_instance.testbench_crew()
+                    testbench_output = testbench_crew.kickoff()
+                    update_status("testbench", "Testbench complete", testbench_output)
+                    
+                    # Save the results
+                    vgen_instance._save_testbench_results([testbench_output])
+                    update_status("testbench", "Results saved")
+                    
+                    if run_type == "testbench":
+                        active_runs[run_id]["status"] = "completed"
+                        return
                 
                 if run_type in ["full", "iverilog"]:
                     # 5. Run Icarus Verilog simulation - first run

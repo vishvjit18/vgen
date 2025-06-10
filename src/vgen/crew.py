@@ -163,42 +163,6 @@ class Vgen():
                         return code
         
         return None
-        
-    # Method to save testbench results
-    def _save_testbench_results(self, results):
-        # Extract Verilog code from results
-        verilog_code = None
-        
-        # Handle single result or list of results
-        if not isinstance(results, list):
-            results = [results]
-        
-        for result in results:
-            code = self._extract_verilog_code(result)
-            if code:
-                verilog_code = code
-                break
-        
-        if not verilog_code:
-            # Fallback to original behavior if we can't extract Verilog code
-            print("Warning: Could not extract Verilog code from results, falling back to string conversion")
-            processed_results = []
-            for result in results:
-                if hasattr(result, 'raw_output'):
-                    processed_results.append(str(result.raw_output))
-                else:
-                    processed_results.append(str(result))
-            verilog_code = "\n\n".join(processed_results)
-        
-        # Write raw output to a temporary file
-        temp_file = "testbench_raw.sv"
-        with open(temp_file, "w") as f:
-            f.write(verilog_code)
-        
-        # Use the clean_verilog_file function to clean the output
-        output_file = "testbench.sv"
-        clean_verilog_file(temp_file, output_file)
-        print(f"Saved cleaned testbench code to {output_file}")
 
     # Modified task creation to save individual output files
     @agent
@@ -362,9 +326,43 @@ class Vgen():
         return Agent(
             config=self.agents_config['testbench_agent'],
             verbose=True,
-            llm=llm,
-            tools=[save_output_tool]
+            llm=llm
         )
+    # Method to save testbench results
+    def _save_testbench_results(self, results):
+        # Extract Verilog code from results
+        verilog_code = None
+        
+        # Handle single result or list of results
+        if not isinstance(results, list):
+            results = [results]
+        
+        for result in results:
+            code = self._extract_verilog_code(result)
+            if code:
+                verilog_code = code
+                break
+        
+        if not verilog_code:
+            # Fallback to original behavior if we can't extract Verilog code
+            print("Warning: Could not extract Verilog code from results, falling back to string conversion")
+            processed_results = []
+            for result in results:
+                if hasattr(result, 'raw_output'):
+                    processed_results.append(str(result.raw_output))
+                else:
+                    processed_results.append(str(result))
+            verilog_code = "\n\n".join(processed_results)
+        
+        # Write raw output to a temporary file
+        temp_file = "testbench_raw.sv"
+        with open(temp_file, "w") as f:
+            f.write(verilog_code)
+        
+        # Use the clean_verilog_file function to clean the output
+        output_file = "testbench.sv"
+        clean_verilog_file(temp_file, output_file)
+        print(f"Saved cleaned testbench code to {output_file}")
     @task
     def testbench_task(self) -> Task:
         # Load the first subtask from verilog_task.json
@@ -385,8 +383,7 @@ class Vgen():
             config=task_config,
             agent=self.testbench_agent(),
             output_file="testbench.sv",
-            context=[],
-            human_input=True
+            context=[]
         )
         
         # Interpolate the inputs into the task
