@@ -12,6 +12,8 @@ from pydantic import BaseModel
 from datetime import datetime
 import json
 import logging
+import time
+import glob
 from contextlib import asynccontextmanager
 
 from crewai import Agent, Crew, Process, Task
@@ -355,6 +357,9 @@ async def run_crew(run_id: str, problem_statement: str, run_type: str):
                     # Aggregate all outputs for final reporting
                     update_status("subtasks", "All subtasks complete")
                     
+                    # Add a small delay to ensure all files are fully written
+                    time.sleep(0.5)
+                    
                     if run_type == "subtasks":
                         active_runs[run_id]["status"] = "completed"
                         return
@@ -362,9 +367,20 @@ async def run_crew(run_id: str, problem_statement: str, run_type: str):
                 if run_type in ["full", "merging"]:
                     # 3. Run the merging crew
                     update_status("merging", "Running merging crew")
-                    crew2 = vgen_instance.merging_crew()
-                    merging_output = crew2.kickoff()
-                    update_status("merging", "Merging complete", merging_output)
+                    
+                    # Collect subtask code and pass to merging crew
+                    try:
+                        subtask_code = vgen_instance.collect_subtask_outputs()
+                        crew2 = vgen_instance.merging_crew(subtask_code)
+                        merging_output = crew2.kickoff()
+                        update_status("merging", "Merging complete", merging_output)
+                        
+                    except Exception as e:
+                        logger.error(f"Run {run_id} - Error in merging: {str(e)}")
+                        # Fallback to original method without passing subtask_code
+                        crew2 = vgen_instance.merging_crew()
+                        merging_output = crew2.kickoff()
+                        update_status("merging", "Merging complete", merging_output)
                     
                     # Save the results
                     vgen_instance._save_results([merging_output])
@@ -377,9 +393,20 @@ async def run_crew(run_id: str, problem_statement: str, run_type: str):
                 if run_type in ["full", "testbench"]:
                     # 4. Run the testbench crew
                     update_status("testbench", "Running testbench crew")
-                    testbench_crew = vgen_instance.testbench_crew()
-                    testbench_output = testbench_crew.kickoff()
-                    update_status("testbench", "Testbench complete", testbench_output)
+                    
+                    # Collect first subtask and pass to testbench crew
+                    try:
+                        first_subtask = vgen_instance.collect_first_subtask()
+                        testbench_crew = vgen_instance.testbench_crew(first_subtask)
+                        testbench_output = testbench_crew.kickoff()
+                        update_status("testbench", "Testbench complete", testbench_output)
+                        
+                    except Exception as e:
+                        logger.error(f"Run {run_id} - Error in testbench: {str(e)}")
+                        # Fallback to original method without passing first_subtask
+                        testbench_crew = vgen_instance.testbench_crew()
+                        testbench_output = testbench_crew.kickoff()
+                        update_status("testbench", "Testbench complete", testbench_output)
                     
                     # Save the results
                     vgen_instance._save_testbench_results([testbench_output])
@@ -390,191 +417,116 @@ async def run_crew(run_id: str, problem_statement: str, run_type: str):
                         return
                 
                 if run_type in ["full", "iverilog"]:
-                    # 5. Run Icarus Verilog simulation - first run
-                    update_status("simulation", "Running Icarus Verilog simulation")
-                    icarus_crew = vgen_instance.icarus_crew()
-                    simulation_output = icarus_crew.kickoff()
-                    update_status("simulation", "Simulation complete", simulation_output)
-                    
-                    # Process the simulation output
-                    input_md = 'iverilog_report.md'
-                    output_json = 'iverilog_report.json'
-                    update_status("processing", "Processing simulation report")
-                    success = process_iverilog_report_to_json(input_md, output_json)
-                    
-                    if not success:
-                        update_status("error", "Failed to process markdown output")
-                        active_runs[run_id]["status"] = "failed"
-                        return
-                    
-                    # FIRST CONDITIONAL CHECK
-                    try:
-                        with open('iverilog_report.json', 'r') as f:
-                            iverilog_report = json.load(f)
-                        design_suggestions_empty = iverilog_report.get('files', {}).get('design', {}).get('suggestions', '') == ''
-                    except Exception as e:
-                        update_status("error", f"Error reading iverilog_report.json: {e}")
-                        design_suggestions_empty = False  # Default to original behavior if file can't be read
+                    # 5. Run Icarus Verilog simulation
+                    # Repeat the fixer logic 4 times
+                    for iteration in range(1, 5):
+                        update_status("iteration", f"==== ITERATION {iteration} ====")
                         
-                    if design_suggestions_empty:
-                        design_file = "design.sv"
-                        try:
-                            # Read and display design file content
-                            if os.path.exists(design_file):
-                                with open(design_file, 'r') as f:
-                                    design_content = f.read()
-                                update_status("result", "Final design content (Original)", design_content)
-                            else:
-                                update_status("error", f"Error: {design_file} not found")
-                        except Exception as e:
-                            update_status("error", f"Error reading results: {e}")
-                    else:
-                        # Design has suggestions - FIRST DESIGN FIXER
-                        update_status("fixing", "Design has suggestions. Running DESIGN FIXER CREW - 1")
-                        design_fixer_crew = vgen_instance.Design_fixer_crew()
-                        design_fixer_output = design_fixer_crew.kickoff()
-                        update_status("fixing", "Design fixing complete", design_fixer_output)
-                        
-                        # Save the fixed design
-                        vgen_instance._save_fixed_design_results([design_fixer_output])
-                        update_status("fixing", "Fixed design saved")
-                        
-                        # Run simulation again - SECOND SIMULATION
-                        update_status("simulation", "Running Icarus Verilog simulation - 2")
+                        # Run Icarus Verilog simulation
+                        update_status("simulation", f"Running Icarus Verilog simulation - {iteration}")
+                        icarus_crew = vgen_instance.icarus_crew()
                         simulation_output = icarus_crew.kickoff()
-                        update_status("simulation", "Second simulation complete", simulation_output)
+                        update_status("simulation", "Simulation complete", simulation_output)
                         
-                        # Process the second simulation output
+                        # Process markdown to JSON
                         input_md = 'iverilog_report.md'
                         output_json = 'iverilog_report.json'
-                        update_status("processing", "Processing second simulation report")
                         success = process_iverilog_report_to_json(input_md, output_json)
                         if not success:
-                            update_status("error", "Failed to process simulation report")
+                            update_status("error", "Failed to process markdown output")
                             active_runs[run_id]["status"] = "failed"
                             return
                         
-                        # SECOND CONDITIONAL CHECK
+                        # Check suggestions and decide which fixer crews to run
                         try:
                             with open('iverilog_report.json', 'r') as f:
                                 iverilog_report = json.load(f)
-                            design_suggestions_empty = iverilog_report.get('files', {}).get('design', {}).get('suggestions', '') == ''
+                            # Try both possible spellings of suggestions field  
+                            design_suggestions = iverilog_report.get('files', {}).get('design', {}).get('suggesstions', '')
+                            if not design_suggestions:  # If empty, try alternate spelling
+                                design_suggestions = iverilog_report.get('files', {}).get('design', {}).get('suggestions', '')
+                            
+                            testbench_suggestions = iverilog_report.get('files', {}).get('testbench', {}).get('suggesstions', '')
+                            if not testbench_suggestions:  # If empty, try alternate spelling
+                                testbench_suggestions = iverilog_report.get('files', {}).get('testbench', {}).get('suggestions', '')
+                            design_suggestions_empty = design_suggestions == ''
+                            testbench_suggestions_empty = testbench_suggestions == ''
+                            
+                            # Debug information
+                            update_status("debug", f"Iteration {iteration}: Design suggestions: '{design_suggestions}', Testbench suggestions: '{testbench_suggestions}', Design empty: {design_suggestions_empty}, Testbench empty: {testbench_suggestions_empty}")
+                            
                         except Exception as e:
                             update_status("error", f"Error reading iverilog_report.json: {e}")
                             design_suggestions_empty = False
-                            
-                        if design_suggestions_empty:
+                            testbench_suggestions_empty = False
+                        
+                        update_status("debug", f"Entering conditional check for iteration {iteration}")
+                        
+                        if design_suggestions_empty and testbench_suggestions_empty:
+                            # Both design and testbench are clean
+                            update_status("debug", f"Both clean path taken for iteration {iteration}")
                             design_file = "design.sv"
                             try:
-                                # Read and display design file content
                                 if os.path.exists(design_file):
                                     with open(design_file, 'r') as f:
                                         design_content = f.read()
-                                    update_status("result", "Final design content (FIXER CREW - 1)", design_content)
+                                    update_status("result", f"Final Design Content - Iteration {iteration} - Both Clean", design_content)
+                                    break  # Exit the loop if both are clean
                                 else:
                                     update_status("error", f"Error: {design_file} not found")
                             except Exception as e:
                                 update_status("error", f"Error reading results: {e}")
+                        
                         else:
-                            # Design still has suggestions - SECOND DESIGN FIXER
-                            update_status("fixing", "Design has suggestions. Running DESIGN FIXER CREW - 2")
-                            design_fixer_crew = vgen_instance.Design_fixer_crew()
-                            design_fixer_output = design_fixer_crew.kickoff()
-                            update_status("fixing", "Second design fixing complete", design_fixer_output)
+                            # Either one or both have suggestions - run appropriate fixer crews
+                            update_status("debug", f"Fixer path taken for iteration {iteration}")
+                            crews_to_run = []
                             
-                            # Save the fixed design
-                            vgen_instance._save_fixed_design_results([design_fixer_output])
-                            update_status("fixing", "Second fixed design saved")
+                            if not design_suggestions_empty:
+                                crews_to_run.append("design")
+                                update_status("info", f"Design has suggestions in iteration {iteration}")
                             
-                            # Run simulation again - THIRD SIMULATION
-                            update_status("simulation", "Running Icarus Verilog simulation - 3")
-                            simulation_output = icarus_crew.kickoff()
-                            update_status("simulation", "Third simulation complete", simulation_output)
+                            if not testbench_suggestions_empty:
+                                crews_to_run.append("testbench")
+                                update_status("info", f"Testbench has suggestions in iteration {iteration}")
                             
-                            # Process the third simulation output
-                            input_md = 'iverilog_report.md'
-                            output_json = 'iverilog_report.json'
-                            update_status("processing", "Processing third simulation report")
-                            success = process_iverilog_report_to_json(input_md, output_json)
-                            if not success:
-                                update_status("error", "Failed to process simulation report")
-                                active_runs[run_id]["status"] = "failed"
-                                return
+                            update_status("debug", f"Crews to run: {crews_to_run}")
                             
-                            # THIRD CONDITIONAL CHECK
-                            try:
-                                with open('iverilog_report.json', 'r') as f:
-                                    iverilog_report = json.load(f)
-                                design_suggestions_empty = iverilog_report.get('files', {}).get('design', {}).get('suggestions', '') == ''
-                            except Exception as e:
-                                update_status("error", f"Error reading iverilog_report.json: {e}")
-                                design_suggestions_empty = False
-                                
-                            if design_suggestions_empty:
+                            # Run design fixer if needed
+                            if "design" in crews_to_run:
+                                update_status("debug", f"About to run design fixer crew for iteration {iteration}")
+                                update_status("fixing", f"Running DESIGN FIXER CREW - Iteration {iteration}")
+                                design_fixer_crew = vgen_instance.Design_fixer_crew()
+                                design_fixer_output = design_fixer_crew.kickoff()
+                                update_status("fixing", "Design fixing complete", design_fixer_output)
+                                vgen_instance._save_fixed_design_results([design_fixer_output])
+                                update_status("fixing", "Fixed design saved")
+                            
+                            # Run testbench fixer if needed
+                            if "testbench" in crews_to_run:
+                                update_status("debug", f"About to run testbench fixer crew for iteration {iteration}")
+                                update_status("fixing", f"Running TESTBENCH FIXER CREW - Iteration {iteration}")
+                                testbench_fixer_crew = vgen_instance.testbench_fixer_crew()
+                                testbench_fixer_output = testbench_fixer_crew.kickoff()
+                                update_status("fixing", "Testbench fixing complete", testbench_fixer_output)
+                                vgen_instance._save_testbench_results([testbench_fixer_output])
+                                update_status("fixing", "Fixed testbench saved")
+                            
+                            # If this is the last iteration and still have suggestions
+                            if iteration == 4:
+                                update_status("info", "Reached maximum iterations. Some suggestions may still remain.")
                                 design_file = "design.sv"
                                 try:
-                                    # Read and display design file content
                                     if os.path.exists(design_file):
                                         with open(design_file, 'r') as f:
                                             design_content = f.read()
-                                        update_status("result", "Final design content (FIXER CREW - 2)", design_content)
+                                        update_status("result", f"Final Design Content - Iteration {iteration}", design_content)
                                     else:
                                         update_status("error", f"Error: {design_file} not found")
                                 except Exception as e:
                                     update_status("error", f"Error reading results: {e}")
-                            else:
-                                # Design still has suggestions - THIRD DESIGN FIXER
-                                update_status("fixing", "Design has suggestions. Running DESIGN FIXER CREW - 3")
-                                design_fixer_crew = vgen_instance.Design_fixer_crew()
-                                design_fixer_output = design_fixer_crew.kickoff()
-                                update_status("fixing", "Third design fixing complete", design_fixer_output)
-                                
-                                # Save the fixed design
-                                vgen_instance._save_fixed_design_results([design_fixer_output])
-                                update_status("fixing", "Third fixed design saved")
-                                
-                                # Run simulation again - FOURTH SIMULATION
-                                update_status("simulation", "Running Icarus Verilog simulation - 4")
-                                simulation_output = icarus_crew.kickoff()
-                                update_status("simulation", "Fourth simulation complete", simulation_output)
-                                
-                                # Process the fourth simulation output
-                                input_md = 'iverilog_report.md'
-                                output_json = 'iverilog_report.json'
-                                update_status("processing", "Processing fourth simulation report")
-                                success = process_iverilog_report_to_json(input_md, output_json)
-                                if not success:
-                                    update_status("error", "Failed to process simulation report")
-                                    active_runs[run_id]["status"] = "failed"
-                                    return
-                                
-                                # FOURTH CONDITIONAL CHECK
-                                try:
-                                    with open('iverilog_report.json', 'r') as f:
-                                        iverilog_report = json.load(f)
-                                    design_suggestions_empty = iverilog_report.get('files', {}).get('design', {}).get('suggestions', '') == ''
-                                except Exception as e:
-                                    update_status("error", f"Error reading iverilog_report.json: {e}")
-                                    design_suggestions_empty = False
-                                    
-                                if design_suggestions_empty:
-                                    design_file = "design.sv"
-                                    try:
-                                        # Read and display design file content
-                                        if os.path.exists(design_file):
-                                            with open(design_file, 'r') as f:
-                                                design_content = f.read()
-                                            update_status("result", "Final design content (FIXER CREW - 3)", design_content)
-                                        else:
-                                            update_status("error", f"Error: {design_file} not found")
-                                    except Exception as e:
-                                        update_status("error", f"Error reading results: {e}")
-                                else:
-                                    # Give up message from main.py
-                                    update_status("error", "I can't crack it. Guess it's your turn to shine, Sherlock! Best of luck! 🥹🥹")
                     
                     # Clean up subtask files
-                    import glob
                     subtask_files = glob.glob("subtask_*.v")
                     for file in subtask_files:
                         try:
