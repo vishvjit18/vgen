@@ -205,11 +205,11 @@ def save_output_tool(response: str, agent_name: str = "default-agent") -> str:
     Returns:
         The same response, or a warning if already used by the agent.
     """
-    if _agent_usage_tracker.get(agent_name, False):
-        return f"⚠️ This tool can only be used once per agent. Agent '{agent_name}' has already used it."
+    # if _agent_usage_tracker.get(agent_name, False):
+    #     return f"⚠️ This tool can only be used once per agent. Agent '{agent_name}' has already used it."
 
-    # Mark as used
-    _agent_usage_tracker[agent_name] = True
+    # # Mark as used
+    # _agent_usage_tracker[agent_name] = True
 
     # Save to file
     with open("pre_feedback_output.txt", "w", encoding="utf-8") as f:

@@ -283,11 +283,23 @@ class Vgen():
                 print(f"Error reading subtask file {file_path}: {e}")
         
         return "\n\n".join(all_code)
+    
+    def collect_first_subtask(self) -> str:
+        """Collect the first subtask source from verilog_task.json"""
+        try:
+            with open("verilog_task.json") as f:
+                data = json.load(f)
+                if data.get("Sub-Task") and len(data["Sub-Task"]) > 0:
+                    return data["Sub-Task"][0].get("source", "")
+        except Exception as e:
+            print(f"Error loading first subtask from verilog_task.json: {e}")
+        return ""
     @task
-    def merging_task(self) -> Task:
-
-        # Collect all subtask outputs
-        subtask_code = self.collect_subtask_outputs()
+    def merging_task(self, subtask_code: str = None) -> Task:
+        
+        # If no subtask_code provided, collect it (for backward compatibility)
+        if subtask_code is None:
+            subtask_code = self.collect_subtask_outputs()
         
         # Create a Task with necessary configuration
         task = Task(
@@ -307,11 +319,11 @@ class Vgen():
         
         return task
     @crew
-    def merging_crew(self) -> Crew:
+    def merging_crew(self, subtask_code: str = None) -> Crew:
         """Dedicated crew for just the merging task"""
         return Crew(
             agents=[self.merger_agent()],
-            tasks=[self.merging_task()],
+            tasks=[self.merging_task(subtask_code)],
             process=Process.sequential,
             verbose=True,
             memory=True,
@@ -365,15 +377,16 @@ class Vgen():
         clean_verilog_file(temp_file, output_file)
         print(f"Saved cleaned testbench code to {output_file}")
     @task
-    def testbench_task(self) -> Task:
-        # Load the first subtask from verilog_task.json
-        try:
-            with open("verilog_task.json") as f:
-                data = json.load(f)
-                first_subtask = data["Sub-Task"][0]["source"] if data["Sub-Task"] else ""
-        except Exception as e:
-            print(f"Error loading verilog_task.json: {e}")
-            first_subtask = ""
+    def testbench_task(self, first_subtask: str = None) -> Task:
+        # If no first_subtask provided, load it from verilog_task.json (for backward compatibility)
+        if first_subtask is None:
+            try:
+                with open("verilog_task.json") as f:
+                    data = json.load(f)
+                    first_subtask = data["Sub-Task"][0]["source"] if data["Sub-Task"] else ""
+            except Exception as e:
+                print(f"Error loading verilog_task.json: {e}")
+                first_subtask = ""
  
         # Get the testbench task configuration
         task_config = self.tasks_config['testbench_generation'].copy()
@@ -395,11 +408,11 @@ class Vgen():
         
         return task
     @crew
-    def testbench_crew(self) -> Crew:
+    def testbench_crew(self, first_subtask: str = None) -> Crew:
         """Testbench generation crew"""
         return Crew(
             agents=[self.testbench_agent()],
-            tasks=[self.testbench_task()],
+            tasks=[self.testbench_task(first_subtask)],
             process=Process.sequential,
             verbose=True,
             memory=True,
