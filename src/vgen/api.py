@@ -496,9 +496,21 @@ async def run_crew(run_id: str, problem_statement: str, run_type: str):
                             if "design" in crews_to_run:
                                 update_status("debug", f"About to run design fixer crew for iteration {iteration}")
                                 update_status("fixing", f"Running DESIGN FIXER CREW - Iteration {iteration}")
-                                design_fixer_crew = vgen_instance.Design_fixer_crew()
-                                design_fixer_output = design_fixer_crew.kickoff()
-                                update_status("fixing", "Design fixing complete", design_fixer_output)
+                                
+                                # Collect design suggestions and pass to crew
+                                try:
+                                    suggestions = vgen_instance.collect_design_suggestions()
+                                    design_fixer_crew = vgen_instance.Design_fixer_crew(suggestions)
+                                    design_fixer_output = design_fixer_crew.kickoff()
+                                    update_status("fixing", "Design fixing complete", design_fixer_output)
+                                    
+                                except Exception as e:
+                                    logger.error(f"Run {run_id} - Error in design fixer: {str(e)}")
+                                    # Fallback to original method without passing parameters
+                                    design_fixer_crew = vgen_instance.Design_fixer_crew()
+                                    design_fixer_output = design_fixer_crew.kickoff()
+                                    update_status("fixing", "Design fixing complete", design_fixer_output)
+                                
                                 vgen_instance._save_fixed_design_results([design_fixer_output])
                                 update_status("fixing", "Fixed design saved")
                             
@@ -506,9 +518,21 @@ async def run_crew(run_id: str, problem_statement: str, run_type: str):
                             if "testbench" in crews_to_run:
                                 update_status("debug", f"About to run testbench fixer crew for iteration {iteration}")
                                 update_status("fixing", f"Running TESTBENCH FIXER CREW - Iteration {iteration}")
-                                testbench_fixer_crew = vgen_instance.testbench_fixer_crew()
-                                testbench_fixer_output = testbench_fixer_crew.kickoff()
-                                update_status("fixing", "Testbench fixing complete", testbench_fixer_output)
+                                
+                                # Collect testbench suggestions and pass to crew
+                                try:
+                                    suggestions = vgen_instance.collect_testbench_suggestions()
+                                    testbench_fixer_crew = vgen_instance.testbench_fixer_crew(suggestions)
+                                    testbench_fixer_output = testbench_fixer_crew.kickoff()
+                                    update_status("fixing", "Testbench fixing complete", testbench_fixer_output)
+                                    
+                                except Exception as e:
+                                    logger.error(f"Run {run_id} - Error in testbench fixer: {str(e)}")
+                                    # Fallback to original method without passing parameters
+                                    testbench_fixer_crew = vgen_instance.testbench_fixer_crew()
+                                    testbench_fixer_output = testbench_fixer_crew.kickoff()
+                                    update_status("fixing", "Testbench fixing complete", testbench_fixer_output)
+                                
                                 vgen_instance._save_testbench_results([testbench_fixer_output])
                                 update_status("fixing", "Fixed testbench saved")
                             

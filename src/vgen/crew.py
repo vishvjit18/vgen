@@ -294,6 +294,38 @@ class Vgen():
         except Exception as e:
             print(f"Error loading first subtask from verilog_task.json: {e}")
         return ""
+    
+    def collect_design_suggestions(self) -> str:
+        """Collect design suggestions from iverilog_report.json"""
+        try:
+            with open("iverilog_report.json", "r") as f:
+                data = json.load(f)
+            
+            # Try to get suggestions with both possible spellings
+            suggestions = data.get("files", {}).get("design", {}).get("suggesstions", "")
+            if not suggestions:  # If empty, try alternate spelling
+                suggestions = data.get("files", {}).get("design", {}).get("suggestions", "")
+            
+            return suggestions
+        except Exception as e:
+            print(f"Error loading design suggestions from iverilog_report.json: {e}")
+            return ""
+    
+    def collect_testbench_suggestions(self) -> str:
+        """Collect testbench suggestions from iverilog_report.json"""
+        try:
+            with open("iverilog_report.json", "r") as f:
+                data = json.load(f)
+            
+            # Try to get suggestions with both possible spellings
+            suggestions = data.get("files", {}).get("testbench", {}).get("suggesstions", "")
+            if not suggestions:  # If empty, try alternate spelling
+                suggestions = data.get("files", {}).get("testbench", {}).get("suggestions", "")
+            
+            return suggestions
+        except Exception as e:
+            print(f"Error loading testbench suggestions from iverilog_report.json: {e}")
+            return ""
     @task
     def merging_task(self, subtask_code: str = None) -> Task:
         
@@ -503,16 +535,18 @@ class Vgen():
         clean_verilog_file(temp_file, output_file)
         print(f"Saved cleaned fixed design code to {output_file}") 
     @task
-    def fix_design_task(self) -> Task:
+    def fix_design_task(self, suggestions: str = None) -> Task:
+        # Load design file from iverilog_report.json
         try:
             with open("iverilog_report.json", "r") as f:
                 data = json.load(f)
             design_file = data.get("files", {}).get("design", {}).get("content", "")
             
-            # Try to get suggestions with both possible spellings
-            suggestions = data.get("files", {}).get("design", {}).get("suggesstions", "")
-            if not suggestions:  # If empty, try alternate spelling
-                suggestions = data.get("files", {}).get("design", {}).get("suggestions", "")
+            if suggestions is None:
+                # Try to get suggestions with both possible spellings
+                suggestions = data.get("files", {}).get("design", {}).get("suggesstions", "")
+                if not suggestions:  # If empty, try alternate spelling
+                    suggestions = data.get("files", {}).get("design", {}).get("suggestions", "")
             
             # Debug output
             print(f"Design content length: {len(design_file)}")
@@ -521,7 +555,8 @@ class Vgen():
         except Exception as e:
             print(f"Error loading iverilog_report.json: {e}")
             design_file = ""
-            suggestions = ""
+            if suggestions is None:
+                suggestions = ""
         
         task_config = self.tasks_config['fix_design_task'].copy()
 
@@ -544,11 +579,11 @@ class Vgen():
         
         return task
     @crew
-    def Design_fixer_crew(self) -> Crew:
+    def Design_fixer_crew(self, suggestions: str = None) -> Crew:
         """Icarus simulation crew"""
         return Crew(
             agents=[self.design_fixer_agent()],
-            tasks=[self.fix_design_task()],
+            tasks=[self.fix_design_task(suggestions)],
             process=Process.sequential,
             verbose=True,
             memory=True,
@@ -568,21 +603,24 @@ class Vgen():
             llm=llm
         )
     @task
-    def fix_testbench_task(self) -> Task:
+    def fix_testbench_task(self, suggestions: str = None) -> Task:
+        # Load testbench file from iverilog_report.json
         try:
             with open("iverilog_report.json", "r") as f:
                 data = json.load(f)
             testbench_file = data.get("files", {}).get("testbench", {}).get("content", "")
             
-            # Try to get suggestions with both possible spellings
-            suggestions = data.get("files", {}).get("testbench", {}).get("suggesstions", "")
-            if not suggestions:  # If empty, try alternate spelling
-                suggestions = data.get("files", {}).get("testbench", {}).get("suggestions", "")
+            if suggestions is None:
+                # Try to get suggestions with both possible spellings
+                suggestions = data.get("files", {}).get("testbench", {}).get("suggesstions", "")
+                if not suggestions:  # If empty, try alternate spelling
+                    suggestions = data.get("files", {}).get("testbench", {}).get("suggestions", "")
             
         except Exception as e:
             print(f"Error loading iverilog_report.json: {e}")
             testbench_file = ""
-            suggestions = ""
+            if suggestions is None:
+                suggestions = ""
         
         task_config = self.tasks_config['fix_testbench_task'].copy()
 
@@ -604,11 +642,11 @@ class Vgen():
         return task
     
     @crew
-    def testbench_fixer_crew(self) -> Crew:
+    def testbench_fixer_crew(self, suggestions: str = None) -> Crew:
         """Testbench Fixer crew"""
         return Crew(
             agents=[self.testbench_fixer_agent()],
-            tasks=[self.fix_testbench_task()],
+            tasks=[self.fix_testbench_task(suggestions)],
             process=Process.sequential,
             verbose=True,
             memory=True,

@@ -61,6 +61,7 @@ testbench_generation:
     4. Do not include the module design code itself in the testbench
     5. It should end the simulation with $finish
     6. Don't use system verilog standards
+    7. Add self checking mechanism to check the output of the design.
   expected_output: A complete Verilog testbench file without any comments inside or after the code block.
   agent: testbench_agent
 
