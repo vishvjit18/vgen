@@ -1,9 +1,9 @@
 high_level_planning_task:
   description: >
    Based on the {Target_Problem} think what you know about this, set up a sequential implementation plans. Each subtask should focus on implement only one signal at a time 
-   and don't create entire verilog code for the {Target_Problem}.
+   and don't create entire verilog code.
    Rules:
-    Make sure the task plans satisfy the following rules! Do not make the plans that violate the following rules!!!
+    Make sure the task plans satisfy the following rules!
     Make a plan to define the module with its input and output first.
     Do not plan the implementation of logic or signal from the input ports.
     There is test bench to test the functional correctness. Do not plan generating testbench to test the generated verilog code.
@@ -16,5 +16,112 @@ high_level_planning_task:
    The expected output should be a JSON object named Sub-Task containing a list of tasks. Each task should be represented as a JSON object with the following fields:
    - id: A unique identifier for the task and indicates the sequential order.
    - content: task discription.
-   - source: The source code or context related to the task.
+   - source: Code snippets in verilog language related to the task.
   agent: planner
+
+verilog_conversion:
+  description: >
+   Convert this natural language subtask into Verilog code.
+    
+   Subtask description:
+   {content}
+
+   Source description:
+   {source}
+    
+   Only return the Verilog code for this step.
+  expected_output: >
+   A single snippet of Verilog code.
+  agent: verilog_agent
+
+verilog_merging:
+  description: >
+    Review all the Verilog modules from previous tasks: 
+    {context} and merge them into a complete verilog code for the {Target_Problem}.
+
+    Ensure:
+    - Proper port declarations
+    - Consistent signal naming
+    - Correct module hierarchy
+    - Elimination of duplicate code
+    - Avoid creating testbench code
+    - Do not add any comments in header of the code block.
+  expected_output: A complete Verilog module file with proper syntax
+
+testbench_generation:
+  description: >
+    Generate a complete Verilog testbench for the following design:
+    Target design: {Target_Problem}
+    
+    Port details from specification: {first_subtask}
+    
+    The testbench should:
+    1. Must follow Verilog coding standards with correct syntax and supported by Icarus Verilog
+    2. Generate clock and reset signals if needed
+    3. Apply appropriate input stimuli
+    4. Do not include the module design code itself in the testbench
+    5. It should end the simulation with $finish
+    6. Don't use system verilog standards
+    7. Add self checking mechanism to check the output of the design.
+  expected_output: A complete Verilog testbench file without any comments inside or after the code block.
+  agent: testbench_agent
+
+iverilog_task:
+  description: >
+    Compile and run the Verilog source file design.sv along with the testbench testbench.sv, 
+    and provide a report based on the structured JSON output from simulation results.
+    Based on this structured data:
+    1. Identify if there are any issues with the design or testbench
+    2. Provide specific suggestions inside output JSON object to fix any errors
+    3. If simulation is successful, analyze the output for correctness
+    4. Do not modify the design.sv and testbench.sv files directly, only provide suggestions
+  expected_output: >
+    Regardless of tool output expected output should be a JSON object same as the input JSON object just add one suggesions key inside files/design/ or files/testbench/ containing specific suggestions for 
+    fixing compilation error if status is success leave suggesions empty for both. 
+    The output should help downstream agents understand what went wrong and how to fix it and do not add any additional information above or below the JSON object.
+    The output should be a JSON object with the following fields:
+    {
+      "status": "",
+      "stage": "",
+      "file": "",
+      "message": "",
+      "log": "",
+      "files": {
+        "design": {
+          "file": "",
+          "content": "",
+          "suggesstions": ""
+        },
+        "testbench": {
+          "file": "",
+          "content": "",
+          "suggesstions": ""
+        }
+      }
+    }
+  agent: iverilog_agent
+
+fix_design_task:
+  description: >
+    You are provided with:
+    - Suggestions for fixing: {suggestions}
+    - The previous design.sv file: {design_file}
+
+    Modify the design.sv file to resolve the issue. Return the fixed version of design.sv file.
+
+  expected_output: >
+    A corrected version of design.sv.
+  agent: design_fixer_agent
+
+fix_testbench_task:
+  description: >
+    You are provided with:
+    - Suggestions for fixing: {suggestions}
+    - The previous testbench.sv file: {testbench_file}
+    
+
+    Modify the testbench.sv file to resolve the issue. Return the fixed version of testbench.sv file.
+
+  expected_output: >
+    A corrected version of testbench.sv.
+  agent: testbench_fixer_agent
