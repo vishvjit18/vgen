@@ -40,7 +40,7 @@ This will start the server on http://localhost:8000.
     ```json
     {
       "problem": "Your Verilog problem statement here",
-      "run_type": "full" // Options: full, planning, subtasks, merging, iverilog
+      "run_type": "full" // Options: full, planning, subtasks, merging, testbench, iverilog
     }
     ```
   - Response:
@@ -54,6 +54,8 @@ This will start the server on http://localhost:8000.
 
 - `GET /run/{run_id}`: Get the status of a specific run
 - `GET /run/{run_id}/stream`: Stream updates from a specific run (SSE)
+- `POST /run/{run_id}/input`: Provide human input or accept current output
+  - Body: `{ "input": "" }` (empty string = accept)
 - `GET /runs`: List all runs
 
 ## Web Interface
